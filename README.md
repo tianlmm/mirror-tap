@@ -1,0 +1,125 @@
+# 镜像点击 MirrorTap
+
+> 点屏幕上半部分，自动去点下半部分**镜像位置**的安卓小工具。单手够不到下面的按钮时最有用。
+
+一个纯 Java、零第三方依赖的 Android 应用（minSdk 26 / Android 8.0+，targetSdk 34），
+构建全部交给 **GitHub Actions**，仓库里不带二进制产物。
+
+```
+┌───────────────────────┐  ← 屏幕顶部
+│                       │
+│   你在这里点一下  ●    │  上半区：一层透明悬浮窗口接住手指
+│                       │
+├───────────────────────┤  ← 分隔线（可拖动，默认 50%）
+│                       │
+│         ● 自动点这里   │  下半区：无障碍服务注入一次镜像点按
+│                       │
+└───────────────────────┘  ← 屏幕底部
+```
+
+## 原理
+
+| 环节 | 用到的系统能力 | 说明 |
+| --- | --- | --- |
+| 接住上半区的触摸 | `TYPE_APPLICATION_OVERLAY` 悬浮窗（`SYSTEM_ALERT_WINDOW`） | 窗口只铺到分隔线高度，所以下半区的触摸完全不受影响 |
+| 在下半区点一下 | `AccessibilityService.dispatchGesture()` | 系统唯一允许 App「代替用户点击」的官方通道，无需 root、无需 adb |
+| 镜像计算 | — | `y' = 2 × 分隔线 − y`，x 不变 |
+
+镜像层结构（三个窗口，从下往上）：
+
+1. `HudLayer` —— 全屏、`FLAG_NOT_TOUCHABLE`，只画分隔线、上半区淡色底和水波纹落点；
+2. `MirrorPanel` —— 铺满上半区，接收并吞掉触摸，抬起时把镜像路径交给服务；
+3. `DividerHandle` —— 分隔线右侧的小把手，上下拖改比例、轻点暂停/恢复。
+
+## 功能
+
+- 上半区任意位置点一下 → 下半区镜像位置点一下（点按延迟 < 1 帧，手感接近直接点）
+- 长按也能镜像（按住 ≥ 520ms 会注入一次长按）
+- 可选「镜像拖动」：在上半区滑动，下半区按镜像轨迹滑一次
+- 分隔线 20%~80% 可调，界面里用滑杆，也可以直接拖屏幕右侧的悬浮把手
+- 暂停/恢复（悬浮把手轻点，或通知栏按钮），暂停时上半区触摸立刻还给 App
+- 落点水波纹、震动反馈、上半区淡色底，都可以单独关掉
+- 转屏、分屏自动重建悬浮层；可选开机自启
+- 深浅色跟随系统无障碍设置？不，界面固定深色主题，省电、不刺眼
+
+## 安装
+
+### 方式一：GitHub Actions 直接下载（推荐）
+
+1. 打开仓库的 **Actions** 页 → 最新的 `Build APK` 成功记录；
+2. 页面底部 **Artifacts** 下载 `MirrorTap-apk.zip`，解压得到 `MirrorTap-v1.0.0.apk`（release）和 `MirrorTap-debug-v1.0.0.apk`；
+3. 传到手机上点开安装（需要在系统里允许「安装未知来源应用」）。
+
+打 tag（`git tag v1.0.0 && git push --tags`）时，工作流会额外把 APK 挂到 **Releases** 页面，手机浏览器直接点链接即可下载。
+
+### 方式二：自己构建
+
+```bash
+git clone <this-repo>
+cd MirrorTap
+./gradlew assembleDebug      # 产物在 app/build/outputs/apk/debug/
+```
+
+用 Android Studio 打开根目录也可以，直接 Run。
+
+> 关于签名：`keystore/mirrortap-release.jks` 是**故意**提交进仓库的，口令就写在
+> `app/build.gradle` 里（`mirrortap`）。它只用来保证每次 CI 构建出来的包签名一致、
+> 能互相覆盖升级，不构成任何安全边界。真要上架商店，请换成自己的 keystore。
+
+## 使用步骤
+
+1. 打开「镜像点击」，授权 **悬浮窗**（显示在其他应用上层）；
+2. 打开 **无障碍**：设置 → 无障碍 → 已下载的服务 → 镜像点击 → 开启；
+3. 回到 App，点「启动镜像」；
+4. 打开任意 App，点上半屏 —— 下半屏的镜像位置会被点一下；
+5. 右侧悬浮把手：上下拖 = 调整分隔线，轻点 = 暂停/恢复；
+6. 结束使用：App 内点「停止镜像」，或通知栏点「退出」。
+
+## 权限与隐私
+
+- `SYSTEM_ALERT_WINDOW`：创建悬浮层，必须。
+- `BIND_ACCESSIBILITY_SERVICE`：注入点击，必须；`canRetrieveWindowContent=false`，**不读取屏幕内容**。
+- `FOREGROUND_SERVICE(_SPECIAL_USE)` + 通知：保活悬浮层，Android 8+ 强制。
+- `VIBRATE`：点按反馈，可选。
+- `RECEIVE_BOOT_COMPLETED`：开机自启，可选，默认关闭。
+
+App 无网络权限，不联网、不收集任何数据，所有设置只存在本机 `SharedPreferences`。
+
+## 常见问题
+
+**为什么上半区点了，原 App 没反应？**
+这是镜像的前提：上半区被悬浮窗接管了，原始触摸不会传给下面的 App，只有镜像点会落下去。想要原 App 也收到，只能先暂停。
+
+**某些 App 点了没反应？**
+银行、支付、部分游戏会主动屏蔽无障碍注入（`dispatchGesture` 返回 false 或被系统静默丢弃）。这是系统级限制，没有绕过方案。
+
+**小米 / 红米 / HyperOS**
+除了悬浮窗，还要在「设置 → 应用设置 → 镜像点击」里打开 **显示悬浮窗**、**后台弹出界面**，并把省电策略改成「无限制」，否则服务容易被杀。
+
+**华为 / 鸿蒙**
+「设置 → 应用和服务 → 应用启动管理」里把镜像点击设为手动管理，允许后台活动。
+
+**分隔线和实际像素差一点？**
+全面屏 / 挖孔屏的 `getMaximumWindowMetrics()` 已包含状态栏区域，一般是对齐的。如果某机型偏了，拖动把手微调一下即可（比例会记住）。
+
+**会不会很耗电？**
+悬浮层是三个静态窗口，没有轮询、没有定时器（只有水波纹动画那 360ms），常驻功耗接近 0。
+
+## 目录结构
+
+```
+app/src/main/java/com/mirrortap/app/
+├── MainActivity.java          权限引导 + 参数设置
+├── MirrorOverlayService.java  前台服务，三个悬浮窗口的创建与镜像分发
+├── MirrorPanel.java           上半区触摸层
+├── HudLayer.java              分隔线 / 水波纹绘制层
+├── DividerHandle.java         可拖动的悬浮把手
+├── TapInjectorService.java    无障碍服务，dispatchGesture 注入
+├── PreviewView.java           首页示意图动画
+├── BootReceiver.java          可选开机自启
+└── Prefs.java                 设置存储
+```
+
+## License
+
+MIT

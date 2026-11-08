@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">镜像点击</string>
+    <string name="tagline">点上面，自动点下面的镜像位置</string>
+
+    <string name="accessibility_description">开启后，本服务才能在屏幕下半区替你完成一次点击。它只根据你在上半区的触摸位置注入一次镜像点按，不读取、不保存任何屏幕内容。</string>
+
+    <string name="section_permission">第 1 步 · 授予两项权限</string>
+    <string name="perm_overlay">悬浮窗（接收上半区触摸）</string>
+    <string name="perm_a11y">无障碍服务（注入镜像点击）</string>
+    <string name="grant">去授权</string>
+    <string name="granted">已开启</string>
+    <string name="not_granted">未开启</string>
+
+    <string name="section_split">第 2 步 · 设置分隔线</string>
+    <string name="split_value">分隔线在 %1$d%% 处</string>
+    <string name="split_hint">上半区负责接收你的手指，下半区负责替你点。分隔线可以拖动。</string>
+
+    <string name="section_options">选项</string>
+    <string name="opt_drag">镜像拖动（不只是点，滑动也镜像）</string>
+    <string name="opt_haptic">点按时震动反馈</string>
+    <string name="opt_tint">上半区显示浅色遮罩提示</string>
+    <string name="opt_ghost">在下半区显示落点标记</string>
+    <string name="opt_boot">开机自动启动</string>
+
+    <string name="start">启动镜像</string>
+    <string name="stop">停止镜像</string>
+    <string name="running">运行中</string>
+    <string name="paused">已暂停（点悬浮把手恢复）</string>
+
+    <string name="section_usage">怎么用</string>
+    <string name="usage">1. 两项权限都变绿以后，点「启动镜像」。\n2. 悬浮把手（屏幕右侧的小圆钮）会停在分隔线上：上下拖动它可以调整上下比例，轻点它可以暂停/恢复。\n3. 打开你要用的 App，点屏幕上半区任意位置 —— 下半区对应的镜像位置会被自动点一下。\n4. 想彻底关掉：回到本页点「停止镜像」，或下拉通知栏点「退出」。\n\n注意：上半区的原始触摸会被拦截，不会再传给 App（这是镜像的前提）。银行、支付类 App 可能禁止无障碍注入，属于正常现象。</string>
+
+    <string name="tip_need_overlay">请先允许「显示在其他应用上层」</string>
+    <string name="tip_need_a11y">请先在无障碍列表里开启「镜像点击」</string>
+    <string name="tip_no_notif">通知权限未开启，前台服务提示不可见（不影响使用）</string>
+    <string name="notif_title">镜像点击运行中</string>
+    <string name="notif_title_paused">镜像点击已暂停</string>
+    <string name="notif_text">分隔线 %1$d%% · 轻点悬浮把手可暂停</string>
+    <string name="notif_pause">暂停</string>
+    <string name="notif_resume">恢复</string>
+    <string name="notif_quit">退出</string>
+    <string name="channel_name">镜像点击悬浮层</string>
+    <string name="channel_desc">保持镜像点击在后台运行</string>
+    <string name="a11y_lost">无障碍服务被系统关闭，镜像点击已暂停</string>
+</resources>

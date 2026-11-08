@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+// 仓库里带一个公共用途的签名文件，只为让每次 CI 构建的包能互相覆盖升级，
+// 口令就写在下面，不构成任何安全边界。想上架商店请换成自己的 keystore。
+def releaseKeyStore = rootProject.file('keystore/mirrortap-release.jks')
+
+android {
+    namespace 'com.mirrortap.app'
+    compileSdk 34
+
+    signingConfigs {
+        stable {
+            if (releaseKeyStore.exists()) {
+                storeFile releaseKeyStore
+                storePassword 'mirrortap'
+                keyAlias 'mirrortap'
+                keyPassword 'mirrortap'
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.mirrortap.app"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        resConfigs "zh", "en"
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ""
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            // 有仓库内 keystore 就用它（签名稳定，可覆盖升级）；没有就退回 debug 签名，保证任何机器都能构建
+            signingConfig releaseKeyStore.exists() ? signingConfigs.stable : signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}

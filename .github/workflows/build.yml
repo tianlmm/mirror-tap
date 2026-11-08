@@ -1,0 +1,74 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Assemble APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug + release
+        run: |
+          if [ -x ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew --no-daemon --stacktrace assembleDebug assembleRelease
+          else
+            gradle --no-daemon --stacktrace assembleDebug assembleRelease
+          fi
+
+      - name: Collect APKs
+        run: |
+          set -e
+          VER=$(grep -oE 'versionName "[^"]+"' app/build.gradle | head -1 | cut -d'"' -f2)
+          mkdir -p dist
+          find app/build/outputs/apk -name '*.apk' | while read -r f; do
+            case "$f" in
+              *release*) cp "$f" "dist/MirrorTap-v${VER}.apk" ;;
+              *debug*)   cp "$f" "dist/MirrorTap-debug-v${VER}.apk" ;;
+            esac
+          done
+          ls -lh dist
+          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MirrorTap-apk
+          path: dist/*
+          retention-days: 30
+
+      - name: Attach to release (tag only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

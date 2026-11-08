@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IDEA
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 产物
+*.apk
+*.aab
+
+# 注意：keystore/ 是有意提交的（只为保证 CI 构建签名稳定），不要忽略
+
+# 本地构建工具链（SDK 命令行工具 / Gradle 发行包），不提交
+tools/

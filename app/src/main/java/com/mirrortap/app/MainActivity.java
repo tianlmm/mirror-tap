@@ -27,6 +27,7 @@ public class MainActivity extends Activity {
     private Button toggleButton;
     private RadioGroup directionGroup;
     private RadioGroup dragGroup;
+    private TextView diagState;
     private boolean syncing;
 
     @Override
@@ -40,6 +41,7 @@ public class MainActivity extends Activity {
         runState = findViewById(R.id.run_state);
         seekBar = findViewById(R.id.seek_split);
         toggleButton = findViewById(R.id.btn_toggle);
+        diagState = findViewById(R.id.diag_state);
 
         findViewById(R.id.btn_overlay).setOnClickListener(v -> requestOverlayPermission());
         findViewById(R.id.btn_a11y).setOnClickListener(v -> openAccessibilitySettings());
@@ -69,6 +71,7 @@ public class MainActivity extends Activity {
         });
 
         setupChoiceGroups();
+        bindCheck(R.id.cb_tap_origin, Prefs.KEY_TAP_ORIGIN, false, false);
         bindCheck(R.id.cb_haptic, Prefs.KEY_HAPTIC, true, false);
         bindCheck(R.id.cb_tint, Prefs.KEY_TINT, true, true);
         bindCheck(R.id.cb_boot, Prefs.KEY_BOOT, false, false);
@@ -186,6 +189,12 @@ public class MainActivity extends Activity {
         }
         updateSplitLabel();
         syncChoiceGroups();
+
+        boolean connected = TapInjectorService.isConnected();
+        String last = MirrorOverlayService.lastEvent();
+        diagState.setVisibility(running || connected ? TextView.VISIBLE : TextView.GONE);
+        diagState.setText("无障碍" + (connected ? "已连接" : "未连接")
+                + " · " + (last.isEmpty() ? "还没有镜像过" : last));
     }
 
     private void updateSplitLabel() {

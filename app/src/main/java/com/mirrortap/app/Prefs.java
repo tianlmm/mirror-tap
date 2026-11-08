@@ -14,6 +14,7 @@ public final class Prefs {
     public static final String KEY_BOOT = "boot";
     public static final String KEY_DIRECTION = "direction";
     public static final String KEY_DRAG_MODE = "drag_mode";
+    public static final String KEY_TAP_ORIGIN = "tap_origin";
 
     /** 上半屏点、下半屏镜像（默认） */
     public static final String DIR_DOWN = "down";
@@ -69,6 +70,11 @@ public final class Prefs {
 
     public static void putString(Context c, String key, String value) {
         sp(c).edit().putString(key, value).apply();
+    }
+
+    /** 点按时是否也点一下原位置（默认只镜像）。 */
+    public static boolean tapOrigin(Context c) {
+        return sp(c).getBoolean(KEY_TAP_ORIGIN, false);
     }
 
     public static boolean haptic(Context c) {

@@ -56,6 +56,12 @@ public class MirrorOverlayService extends Service
 
     private static volatile boolean sRunning = false;
     private static volatile boolean sPaused = false;
+    private static volatile String sLastEvent = "";
+
+    /** 上一次镜像的结果，给首页诊断行用。 */
+    public static String lastEvent() {
+        return sLastEvent;
+    }
 
     private WindowManager windowManager;
     private NotificationManager notificationManager;
@@ -459,8 +465,60 @@ public class MirrorOverlayService extends Service
     public void onMirrorTap(float x, float y, long heldMs) {
         float splitY = screenHeight * split;
         long duration = heldMs >= LONG_PRESS_MS ? Math.min(heldMs, 1500L) : TAP_DURATION_MS;
-        inject(Collections.singletonList(
-                new PointF(clampX(x), clampY(2f * splitY - y))), duration);
+        PointF origin = new PointF(clampX(x), clampY(y));
+        PointF target = new PointF(clampX(x), clampY(2f * splitY - y));
+
+        if (Prefs.tapOrigin(this)) {
+            tapOriginAndMirror(origin, target, duration);
+            return;
+        }
+        boolean ok = stroke(Collections.singletonList(target), duration, null);
+        record(origin, target, ok);
+        if (ok && Prefs.haptic(this)) {
+            vibrate();
+        }
+    }
+
+    /** 先点原处（临时让触摸层不可触摸），再点镜像位置。 */
+    private void tapOriginAndMirror(final PointF origin, final PointF target, final long duration) {
+        TapInjectorService injector = TapInjectorService.get();
+        if (injector == null) {
+            toast(getString(R.string.tip_need_a11y));
+            return;
+        }
+        handler.removeCallbacks(restoreTouchable);
+        setPanelTouchable(false);
+
+        final Runnable mirrorStep = new Runnable() {
+            @Override
+            public void run() {
+                boolean ok = stroke(Collections.singletonList(target), duration, restoreTouchable);
+                record(origin, target, ok);
+                if (!ok) {
+                    restoreTouchable.run();
+                } else if (Prefs.haptic(MirrorOverlayService.this)) {
+                    vibrate();
+                }
+            }
+        };
+
+        boolean ok = injector.stroke(Collections.singletonList(origin), duration, new Runnable() {
+            @Override
+            public void run() {
+                handler.postDelayed(mirrorStep, 40L);
+            }
+        });
+        if (!ok) {
+            restoreTouchable.run();
+            return;
+        }
+        handler.postDelayed(restoreTouchable, duration * 2L + 900L);
+    }
+
+    private void record(PointF origin, PointF target, boolean ok) {
+        sLastEvent = String.format(java.util.Locale.US, "(%d,%d) → (%d,%d) %s",
+                (int) origin.x, (int) origin.y, (int) target.x, (int) target.y,
+                ok ? "注入成功" : "注入失败");
     }
 
     @Override
@@ -512,13 +570,17 @@ public class MirrorOverlayService extends Service
         return Math.max(1f, Math.min(y, screenHeight - 2f));
     }
 
-    private void inject(List<PointF> points, long duration) {
+    private boolean stroke(List<PointF> points, long duration, Runnable onFinish) {
         TapInjectorService injector = TapInjectorService.get();
         if (injector == null) {
             toast(getString(R.string.tip_need_a11y));
-            return;
+            return false;
         }
-        if (!injector.stroke(points, duration)) {
+        return injector.stroke(points, duration, onFinish);
+    }
+
+    private void inject(List<PointF> points, long duration) {
+        if (!stroke(points, duration, null)) {
             return;
         }
         if (Prefs.haptic(this)) {

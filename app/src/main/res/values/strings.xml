@@ -34,6 +34,10 @@
     <string name="running">运行中</string>
     <string name="paused">已暂停（点悬浮把手恢复）</string>
 
+    <string name="section_selfcheck">自检（可选）</string>
+    <string name="btn_test">测试注入一下</string>
+    <string name="test_target">注入测试区：已点 %1$d 次</string>
+    <string name="test_hint">先开无障碍，再点上面的按钮。计数 +1 说明这台机器允许无障碍注入；没变化说明系统把手势拦掉了。</string>
     <string name="section_usage">怎么用</string>
     <string name="usage">1. 两项权限都变绿以后，点「启动镜像」。\n2. 屏幕右侧的小把手停在分隔线上：上下拖动 = 调上下比例，轻点 = 暂停 / 恢复，长按 0.9 秒 = 直接退出。\n3. 打开你要用的 App，点屏幕上半区任意位置 —— 下半区对应的镜像位置会被自动点一下。\n4. 暂停时上半区的窗口会被整个移除，屏幕立刻恢复正常，只剩一个小把手；再点一下把手即可恢复。\n\n注意：上半区的原始触摸会被拦截、不再传给 App（这是镜像的前提）。银行、支付类 App 可能禁止无障碍注入，属于正常现象。</string>
 

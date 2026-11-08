@@ -48,6 +48,7 @@ public class MirrorPanel extends View {
     private long downAt;
     private boolean multiTouch;
     private boolean pressed;
+    private boolean ignoreTouch;
 
     private static final class Ripple {
         final float x;
@@ -90,6 +91,17 @@ public class MirrorPanel extends View {
         invalidate();
     }
 
+    /** 自己注入手势的那几百毫秒里，面板丢弃一切触摸，避免自己吃自己形成循环。 */
+    public void setIgnoreTouch(boolean ignore) {
+        this.ignoreTouch = ignore;
+        if (ignore) {
+            pressed = false;
+            multiTouch = false;
+            points.clear();
+            invalidate();
+        }
+    }
+
     public void cancelTouch() {
         pressed = false;
         multiTouch = false;
@@ -99,6 +111,10 @@ public class MirrorPanel extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (ignoreTouch) {
+            return true;
+        }
+
         final float x = event.getRawX();
         final float y = event.getRawY();
 

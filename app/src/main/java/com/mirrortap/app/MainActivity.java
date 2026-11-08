@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,6 +18,8 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.Collections;
+
 public class MainActivity extends Activity {
 
     private TextView overlayState;
@@ -28,6 +31,8 @@ public class MainActivity extends Activity {
     private RadioGroup directionGroup;
     private RadioGroup dragGroup;
     private TextView diagState;
+    private TextView testTarget;
+    private int testCount;
     private boolean syncing;
 
     @Override
@@ -42,6 +47,13 @@ public class MainActivity extends Activity {
         seekBar = findViewById(R.id.seek_split);
         toggleButton = findViewById(R.id.btn_toggle);
         diagState = findViewById(R.id.diag_state);
+        testTarget = findViewById(R.id.test_target);
+        testTarget.setText(getString(R.string.test_target, testCount));
+        testTarget.setOnClickListener(v -> {
+            testCount++;
+            testTarget.setText(getString(R.string.test_target, testCount));
+        });
+        findViewById(R.id.btn_test).setOnClickListener(v -> runInjectionTest());
 
         findViewById(R.id.btn_overlay).setOnClickListener(v -> requestOverlayPermission());
         findViewById(R.id.btn_a11y).setOnClickListener(v -> openAccessibilitySettings());
@@ -159,6 +171,20 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    private void runInjectionTest() {
+        TapInjectorService svc = TapInjectorService.get();
+        if (svc == null) {
+            toast("无障碍服务未连接，先去开启");
+            return;
+        }
+        int[] location = new int[2];
+        testTarget.getLocationOnScreen(location);
+        float cx = location[0] + testTarget.getWidth() / 2f;
+        float cy = location[1] + testTarget.getHeight() / 2f;
+        boolean ok = svc.stroke(Collections.singletonList(new PointF(cx, cy)), 55L);
+        toast(ok ? "已请求注入，看计数有没有 +1" : "系统拒绝了注入");
     }
 
     private void refresh() {

@@ -89,6 +89,9 @@ public class MirrorOverlayService extends Service
         @Override
         public void run() {
             setPanelTouchable(true);
+            if (panel != null) {
+                panel.setIgnoreTouch(false);
+            }
         }
     };
 
@@ -487,6 +490,9 @@ public class MirrorOverlayService extends Service
             return;
         }
         handler.removeCallbacks(restoreTouchable);
+        if (panel != null) {
+            panel.setIgnoreTouch(true);
+        }
         setPanelTouchable(false);
 
         final Runnable mirrorStep = new Runnable() {
@@ -502,17 +508,27 @@ public class MirrorOverlayService extends Service
             }
         };
 
-        boolean ok = injector.stroke(Collections.singletonList(origin), duration, new Runnable() {
+        handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                handler.postDelayed(mirrorStep, 40L);
+                TapInjectorService svc = TapInjectorService.get();
+                if (svc == null) {
+                    restoreTouchable.run();
+                    return;
+                }
+                boolean ok = svc.stroke(Collections.singletonList(origin), duration,
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                handler.postDelayed(mirrorStep, 40L);
+                            }
+                        });
+                if (!ok) {
+                    restoreTouchable.run();
+                }
             }
-        });
-        if (!ok) {
-            restoreTouchable.run();
-            return;
-        }
-        handler.postDelayed(restoreTouchable, duration * 2L + 900L);
+        }, 70L);
+        handler.postDelayed(restoreTouchable, duration * 2L + 1200L);
     }
 
     private void record(PointF origin, PointF target, boolean ok) {
@@ -552,14 +568,25 @@ public class MirrorOverlayService extends Service
             return;
         }
         handler.removeCallbacks(restoreTouchable);
-        setPanelTouchable(false);
-        boolean ok = injector.stroke(points, duration, restoreTouchable);
-        if (!ok) {
-            restoreTouchable.run();
-            return;
+        if (panel != null) {
+            panel.setIgnoreTouch(true);
         }
-        // 兜底：回调没来也要恢复可触摸
-        handler.postDelayed(restoreTouchable, duration + 700L);
+        setPanelTouchable(false);
+        // 等窗口标志真正生效再注入，否则这一下会被自己的触摸层吃掉
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                TapInjectorService injector = TapInjectorService.get();
+                if (injector == null) {
+                    restoreTouchable.run();
+                    return;
+                }
+                if (!injector.stroke(points, duration, restoreTouchable)) {
+                    restoreTouchable.run();
+                }
+            }
+        }, 70L);
+        handler.postDelayed(restoreTouchable, duration + 900L);
     }
 
     private float clampX(float x) {
@@ -576,7 +603,11 @@ public class MirrorOverlayService extends Service
             toast(getString(R.string.tip_need_a11y));
             return false;
         }
-        return injector.stroke(points, duration, onFinish);
+        boolean ok = injector.stroke(points, duration, onFinish);
+        if (!ok) {
+            toast("镜像注入被系统拒绝");
+        }
+        return ok;
     }
 
     private void inject(List<PointF> points, long duration) {

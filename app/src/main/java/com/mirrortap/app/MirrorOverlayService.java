@@ -301,24 +301,34 @@ public class MirrorOverlayService extends Service
         }
     }
 
-    /** 滑动要“穿透”时，把触摸层临时设成不可触摸，让注入的手势落到下面的 App 上。 */
+    /**
+     * 需要让触摸穿透时，重建窗口而不是改 flag。
+     * updateViewLayout 改 FLAG_NOT_TOUCHABLE 在部分 ROM 上不生效，
+     * 会导致注入的点击被自己的触摸层吃掉；创建窗口时带上标志则一定生效。
+     */
     private void setPanelTouchable(boolean touchable) {
-        if (panel == null || !panelAttached || panelTouchable == touchable) {
+        if (panel == null) {
+            return;
+        }
+        if (!panelAttached) {
+            // 上一次重建失败，恢复时直接补回来
+            if (touchable) {
+                addPanel();
+            }
+            return;
+        }
+        if (panelTouchable == touchable) {
             return;
         }
         panelTouchable = touchable;
         try {
-            WindowManager.LayoutParams lp = (WindowManager.LayoutParams) panel.getLayoutParams();
-            if (lp == null) {
-                return;
-            }
-            if (touchable) {
-                lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-            } else {
-                lp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-            }
-            windowManager.updateViewLayout(panel, lp);
+            windowManager.removeViewImmediate(panel);
         } catch (Throwable ignored) {
+        }
+        try {
+            windowManager.addView(panel, makeParams(screenWidth, panelHeight(), 0, panelTop(), touchable));
+        } catch (Throwable t) {
+            panelAttached = false;
         }
     }
 
@@ -483,7 +493,7 @@ public class MirrorOverlayService extends Service
             return;
         }
         boolean ok = stroke(Collections.singletonList(target), duration, null);
-        record(origin, target, ok);
+        record(origin, target, ok, null);
         if (ok && Prefs.haptic(this)) {
             vibrate();
         }
@@ -491,12 +501,12 @@ public class MirrorOverlayService extends Service
 
     /**
      * 镜像 + 原位各点一次。
-     * 先注入镜像（立即有反馈），再临时让触摸层不可触摸、把原始那一下注入回原位。
+     * 先注入镜像（立即有反馈），再把触摸层重建成「不可触摸」的窗口，
+     * 然后把原始那一下注入回原位，最后重建回可触摸。
      */
     private void tapOriginAndMirror(final PointF origin, final PointF target, final long duration) {
-        // 1) 先镜像，手感立刻有
         boolean mirrored = stroke(Collections.singletonList(target), duration, null);
-        record(origin, target, mirrored);
+        record(origin, target, mirrored, null);
         if (!mirrored) {
             return;
         }
@@ -504,12 +514,12 @@ public class MirrorOverlayService extends Service
             vibrate();
         }
 
-        // 2) 再把原位那一下补上：先让触摸层让开，再注入
         handler.removeCallbacks(restoreTouchable);
         if (panel != null) {
             panel.setIgnoreTouch(true);
         }
         setPanelTouchable(false);
+
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -518,18 +528,25 @@ public class MirrorOverlayService extends Service
                     restoreTouchable.run();
                     return;
                 }
-                if (!svc.stroke(Collections.singletonList(origin), duration, restoreTouchable)) {
+                boolean ok = svc.stroke(Collections.singletonList(origin), duration, restoreTouchable);
+                record(origin, target, true, ok);
+                if (!ok) {
                     restoreTouchable.run();
                 }
             }
-        }, 80L);
-        handler.postDelayed(restoreTouchable, duration + 900L);
+        }, 90L);
+        handler.postDelayed(restoreTouchable, duration + 1200L);
     }
 
-    private void record(PointF origin, PointF target, boolean ok) {
-        sLastEvent = String.format(java.util.Locale.US, "(%d,%d) → (%d,%d) %s",
+    private void record(PointF origin, PointF target, boolean mirrorOk, Boolean originOk) {
+        StringBuilder sb = new StringBuilder(String.format(java.util.Locale.US,
+                "(%d,%d) → (%d,%d) 镜像%s",
                 (int) origin.x, (int) origin.y, (int) target.x, (int) target.y,
-                ok ? "注入成功" : "注入失败");
+                mirrorOk ? "✓" : "✗"));
+        if (originOk != null) {
+            sb.append(" 原位").append(originOk ? "✓" : "✗");
+        }
+        sLastEvent = sb.toString();
     }
 
     @Override

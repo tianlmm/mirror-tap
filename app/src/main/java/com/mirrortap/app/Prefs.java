@@ -15,6 +15,12 @@ public final class Prefs {
     public static final String KEY_DIRECTION = "direction";
     public static final String KEY_DRAG_MODE = "drag_mode";
     public static final String KEY_TAP_ORIGIN = "tap_origin";
+    public static final String KEY_MAP_MODE = "map_mode";
+
+    /** 对称镜像：10% ↔ 90% */
+    public static final String MAP_MIRROR = "mirror";
+    /** 同样相对位置：10% → 那一半的 10% */
+    public static final String MAP_OFFSET = "offset";
 
     /** 上半屏点、下半屏镜像（默认） */
     public static final String DIR_DOWN = "down";
@@ -62,6 +68,10 @@ public final class Prefs {
             return DRAG_PASS;
         }
         return v;
+    }
+
+    public static String mapMode(Context c) {
+        return MAP_OFFSET.equals(sp(c).getString(KEY_MAP_MODE, MAP_MIRROR)) ? MAP_OFFSET : MAP_MIRROR;
     }
 
     public static boolean isDownDirection(Context c) {

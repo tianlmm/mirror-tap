@@ -30,6 +30,7 @@ public class MainActivity extends Activity {
     private Button toggleButton;
     private RadioGroup directionGroup;
     private RadioGroup dragGroup;
+    private RadioGroup mapGroup;
     private TextView diagState;
     private TextView testTarget;
     private int testCount;
@@ -96,6 +97,21 @@ public class MainActivity extends Activity {
     private void setupChoiceGroups() {
         directionGroup = findViewById(R.id.rg_direction);
         dragGroup = findViewById(R.id.rg_drag);
+        mapGroup = findViewById(R.id.rg_map);
+
+        mapGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (syncing) {
+                return;
+            }
+            if (checkedId != R.id.rb_map_mirror && checkedId != R.id.rb_map_offset) {
+                return;
+            }
+            Prefs.putString(this, Prefs.KEY_MAP_MODE,
+                    checkedId == R.id.rb_map_offset ? Prefs.MAP_OFFSET : Prefs.MAP_MIRROR);
+            if (MirrorOverlayService.isRunning()) {
+                reloadService();
+            }
+        });
 
         directionGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (syncing) {
@@ -149,6 +165,11 @@ public class MainActivity extends Activity {
                 : R.id.rb_drag_pass;
         if (dragGroup.getCheckedRadioButtonId() != dragId) {
             dragGroup.check(dragId);
+        }
+        int mapId = Prefs.MAP_OFFSET.equals(Prefs.mapMode(this))
+                ? R.id.rb_map_offset : R.id.rb_map_mirror;
+        if (mapGroup != null && mapGroup.getCheckedRadioButtonId() != mapId) {
+            mapGroup.check(mapId);
         }
         syncing = false;
     }

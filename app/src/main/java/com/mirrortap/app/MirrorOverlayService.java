@@ -77,6 +77,7 @@ public class MirrorOverlayService extends Service
     private float split = Prefs.DEFAULT_SPLIT;
     private boolean downDirection = true;
     private String dragMode = Prefs.DRAG_PASS;
+    private String mapMode = Prefs.MAP_MIRROR;
 
     private boolean paused = false;
     private boolean attached = false;
@@ -148,6 +149,7 @@ public class MirrorOverlayService extends Service
         split = Prefs.split(this);
         downDirection = Prefs.isDownDirection(this);
         dragMode = Prefs.dragMode(this);
+        mapMode = Prefs.mapMode(this);
     }
 
     // ---------------------------------------------------------------- 窗口
@@ -469,7 +471,7 @@ public class MirrorOverlayService extends Service
         float splitY = screenHeight * split;
         long duration = heldMs >= LONG_PRESS_MS ? Math.min(heldMs, 1500L) : TAP_DURATION_MS;
         PointF origin = new PointF(clampX(x), clampY(y));
-        PointF target = new PointF(clampX(x), clampY(2f * splitY - y));
+        PointF target = new PointF(clampX(x), clampY(mapY(y)));
 
         if (Prefs.tapOrigin(this)) {
             tapOriginAndMirror(origin, target, duration);
@@ -553,10 +555,9 @@ public class MirrorOverlayService extends Service
             return;
         }
 
-        float splitY = screenHeight * split;
         List<PointF> mirrored = new ArrayList<>(points.size());
         for (PointF p : points) {
-            mirrored.add(new PointF(clampX(p.x), clampY(2f * splitY - p.y)));
+            mirrored.add(new PointF(clampX(p.x), clampY(mapY(p.y))));
         }
         inject(mirrored, duration);
     }
@@ -587,6 +588,26 @@ public class MirrorOverlayService extends Service
             }
         }, 70L);
         handler.postDelayed(restoreTouchable, duration + 900L);
+    }
+
+    /**
+     * 把触摸点映射到另一半。
+     * mirror = 关于分隔线对称（10% ↔ 90%）；offset = 同样相对位置（10% → 那一半的 10%）。
+     */
+    private float mapY(float y) {
+        float splitY = screenHeight * split;
+        if (!Prefs.MAP_OFFSET.equals(mapMode)) {
+            return 2f * splitY - y;
+        }
+        float inTop = downDirection ? statusBarTop : splitY;
+        float inBottom = downDirection ? splitY : screenHeight - navBarBottom;
+        float outTop = downDirection ? splitY : statusBarTop;
+        float outBottom = downDirection ? screenHeight - navBarBottom : splitY;
+        float inHeight = Math.max(1f, inBottom - inTop);
+        float outHeight = Math.max(1f, outBottom - outTop);
+        float t = (y - inTop) / inHeight;
+        t = Math.max(0f, Math.min(1f, t));
+        return outTop + t * outHeight;
     }
 
     private float clampX(float x) {

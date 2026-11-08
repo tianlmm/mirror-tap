@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | 接住上半区的触摸 | `TYPE_APPLICATION_OVERLAY` 悬浮窗（`SYSTEM_ALERT_WINDOW`） | 窗口只铺到分隔线高度，所以下半区的触摸完全不受影响 |
 | 在下半区点一下 | `AccessibilityService.dispatchGesture()` | 系统唯一允许 App「代替用户点击」的官方通道，无需 root、无需 adb |
-| 镜像计算 | — | `y' = 2 × 分隔线 − y`，x 不变 |
+| 映射计算 | — | 默认「同样相对位置」`y' = 分隔线 + (y / 上半高) × 下半高`；可切「对称镜像」`y' = 2 × 分隔线 − y` |
 
 窗口结构只有两个，**没有任何全屏悬浮窗**（全屏 overlay 在部分机型上会吃掉整屏触摸，这是 v1.0.1 修掉的问题）：
 
@@ -47,14 +47,14 @@
 - 长按把手 0.9 秒 = 直接退出（兜底，任何异常情况下都能脱身）
 - 落点水波纹、震动反馈、上半区淡色底，都可以单独关掉
 - 转屏、分屏自动重建悬浮层；可选开机自启
-- 深浅色跟随系统无障碍设置？不，界面固定深色主题，省电、不刺眼
+- 界面固定深色主题，不跟系统亮色切换
 
 ## 安装
 
 ### 方式一：GitHub Actions 直接下载（推荐）
 
 1. 打开仓库的 **Actions** 页 → 最新的 `Build APK` 成功记录；
-2. 页面底部 **Artifacts** 下载 `MirrorTap-apk.zip`，解压得到 `MirrorTap-v1.0.1.apk`（release）和 `MirrorTap-debug-v1.0.1.apk`；
+2. 页面底部 **Artifacts** 下载 `MirrorTap-apk.zip`，解压得到 `MirrorTap-v1.0.8.apk`（release）和 `MirrorTap-debug-v1.0.8.apk`；
 3. 传到手机上点开安装（需要在系统里允许「安装未知来源应用」）。
 
 打 tag（`git tag v1.0.0 && git push --tags`）时，工作流会额外把 APK 挂到 **Releases** 页面，手机浏览器直接点链接即可下载。

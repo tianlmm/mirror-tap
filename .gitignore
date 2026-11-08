@@ -23,3 +23,7 @@ Thumbs.db
 
 # 本地构建工具链（SDK 命令行工具 / Gradle 发行包），不提交
 tools/
+
+# 本地构建产物 / 手工流水线输出
+build_manual/
+dist/

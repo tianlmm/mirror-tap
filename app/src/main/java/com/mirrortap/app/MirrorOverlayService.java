@@ -140,7 +140,9 @@ public class MirrorOverlayService extends Service
 
         panel = new MirrorPanel(this);
         panel.setListener(this);
-        addLayer(panel, screenWidth, Math.round(screenHeight * split), 0, 0, true);
+        if (!paused) {
+            addLayer(panel, screenWidth, Math.round(screenHeight * split), 0, 0, true);
+        }
 
         handle = new DividerHandle(this);
         handle.setListener(this);
@@ -149,6 +151,9 @@ public class MirrorOverlayService extends Service
 
         attached = true;
         applyPrefs();
+        if (hud != null) {
+            hud.setActive(!paused);
+        }
         layoutAll();
     }
 

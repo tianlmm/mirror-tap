@@ -19,6 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Collections;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
 
@@ -59,7 +60,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btn_overlay).setOnClickListener(v -> requestOverlayPermission());
         findViewById(R.id.btn_a11y).setOnClickListener(v -> openAccessibilitySettings());
 
-        seekBar.setMax(60);
+        seekBar.setMax(600);
         seekBar.setProgress(splitToProgress(Prefs.split(this)));
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -82,6 +83,9 @@ public class MainActivity extends Activity {
             public void onStopTrackingTouch(SeekBar sb) {
             }
         });
+
+        findViewById(R.id.btn_split_minus).setOnClickListener(v -> nudgeSplit(-0.001f));
+        findViewById(R.id.btn_split_plus).setOnClickListener(v -> nudgeSplit(0.001f));
 
         setupChoiceGroups();
         bindCheck(R.id.cb_lock, Prefs.KEY_LOCK_SPLIT, false, false);
@@ -246,17 +250,32 @@ public class MainActivity extends Activity {
     }
 
     private void updateSplitLabel() {
-        int percent = Math.round(progressToSplit(seekBar.getProgress()) * 100f);
-        splitValue.setText(getString(R.string.split_value, percent));
+        splitValue.setText(getString(R.string.split_value,
+                percentText(progressToSplit(seekBar.getProgress()))));
+    }
+
+    private static String percentText(float split) {
+        return String.format(Locale.US, "%.1f", Prefs.clamp(split) * 100f);
+    }
+
+    /** 0.1% 一格微调 */
+    private void nudgeSplit(float delta) {
+        float next = Prefs.clamp(Prefs.split(this) + delta);
+        Prefs.setSplit(this, next);
+        seekBar.setProgress(splitToProgress(next));
+        updateSplitLabel();
+        if (MirrorOverlayService.isRunning()) {
+            reloadService();
+        }
     }
 
     private static int splitToProgress(float split) {
         float ratio = (Prefs.clamp(split) - Prefs.MIN_SPLIT) / (Prefs.MAX_SPLIT - Prefs.MIN_SPLIT);
-        return Math.round(ratio * 60f);
+        return Math.round(ratio * 600f);
     }
 
     private static float progressToSplit(int progress) {
-        return Prefs.MIN_SPLIT + (Prefs.MAX_SPLIT - Prefs.MIN_SPLIT) * (progress / 60f);
+        return Prefs.MIN_SPLIT + (Prefs.MAX_SPLIT - Prefs.MIN_SPLIT) * (progress / 600f);
     }
 
     private void toggleService() {

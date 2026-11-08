@@ -13,7 +13,9 @@
     <string name="not_granted">未开启</string>
 
     <string name="section_split">第 2 步 · 设置分隔线</string>
-    <string name="split_value">分隔线在 %1$d%% 处</string>
+    <string name="split_value">分隔线在 %1$s%% 处</string>
+    <string name="btn_minus" formatted="false">−0.1%</string>
+    <string name="btn_plus" formatted="false">＋0.1%</string>
     <string name="split_hint">上半区负责接收你的手指，下半区负责替你点。分隔线可以拖动。</string>
 
     <string name="section_mirror">第 3 步 · 镜像方向与滑动</string>
@@ -50,7 +52,7 @@
     <string name="tip_no_notif">通知权限未开启，前台服务提示不可见（不影响使用）</string>
     <string name="notif_title">镜像点击运行中</string>
     <string name="notif_title_paused">镜像点击已暂停</string>
-    <string name="notif_text">分隔线 %1$d%% · 轻点悬浮把手可暂停</string>
+    <string name="notif_text">分隔线 %1$s%% · 轻点悬浮把手可暂停</string>
     <string name="notif_pause">暂停</string>
     <string name="notif_resume">恢复</string>
     <string name="notif_quit">退出</string>

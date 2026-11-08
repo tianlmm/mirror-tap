@@ -683,7 +683,8 @@ public class MirrorOverlayService extends Service
         if (screenHeight <= 0 || Prefs.lockSplit(this) || handleSuppressed()) {
             return;
         }
-        split = Prefs.clamp(screenY / (float) screenHeight);
+        // 拖动也按 0.1% 取整，和界面上的微调保持一致
+        split = Prefs.clamp(Math.round(screenY / (float) screenHeight * 1000f) / 1000f);
         layoutAll();
     }
 
@@ -740,7 +741,8 @@ public class MirrorOverlayService extends Service
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         String title = getString(paused ? R.string.notif_title_paused : R.string.notif_title);
-        String text = getString(R.string.notif_text, Math.round(split * 100f));
+        String text = getString(R.string.notif_text,
+                String.format(java.util.Locale.US, "%.1f", split * 100f));
 
         Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_mirror)

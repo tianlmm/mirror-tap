@@ -77,7 +77,7 @@ public class MirrorOverlayService extends Service
     private float split = Prefs.DEFAULT_SPLIT;
     private boolean downDirection = true;
     private String dragMode = Prefs.DRAG_PASS;
-    private String mapMode = Prefs.MAP_MIRROR;
+    private String mapMode = Prefs.MAP_OFFSET;
 
     private boolean paused = false;
     private boolean attached = false;
@@ -599,10 +599,12 @@ public class MirrorOverlayService extends Service
         if (!Prefs.MAP_OFFSET.equals(mapMode)) {
             return 2f * splitY - y;
         }
-        float inTop = downDirection ? statusBarTop : splitY;
-        float inBottom = downDirection ? splitY : screenHeight - navBarBottom;
-        float outTop = downDirection ? splitY : statusBarTop;
-        float outBottom = downDirection ? screenHeight - navBarBottom : splitY;
+        // 按整半边等比：上半 [0, 分隔线] → 下半 [分隔线, 屏幕底]，
+        // 这样 10% 会精确落在 60%（分隔线在 50% 时），不受状态栏/导航栏影响
+        float inTop = downDirection ? 0f : splitY;
+        float inBottom = downDirection ? splitY : screenHeight;
+        float outTop = downDirection ? splitY : 0f;
+        float outBottom = downDirection ? screenHeight : splitY;
         float inHeight = Math.max(1f, inBottom - inTop);
         float outHeight = Math.max(1f, outBottom - outTop);
         float t = (y - inTop) / inHeight;

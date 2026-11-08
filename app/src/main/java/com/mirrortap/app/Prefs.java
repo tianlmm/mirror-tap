@@ -71,7 +71,7 @@ public final class Prefs {
     }
 
     public static String mapMode(Context c) {
-        return MAP_OFFSET.equals(sp(c).getString(KEY_MAP_MODE, MAP_MIRROR)) ? MAP_OFFSET : MAP_MIRROR;
+        return MAP_MIRROR.equals(sp(c).getString(KEY_MAP_MODE, MAP_OFFSET)) ? MAP_MIRROR : MAP_OFFSET;
     }
 
     public static boolean isDownDirection(Context c) {

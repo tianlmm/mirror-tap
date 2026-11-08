@@ -20,8 +20,8 @@
     <string name="dir_down">上半屏点 → 下半屏镜像（默认）</string>
     <string name="dir_up">下半屏点 → 上半屏镜像</string>
     <string name="label_map">映射方式</string>
-    <string name="map_mirror">对称镜像：上 10% ↔ 下 90%</string>
-    <string name="map_offset">同样相对位置：上 10% → 那一半的 10%</string>
+    <string name="map_mirror" formatted="false">对称镜像：上 10% ↔ 下 90%（翻转）</string>
+    <string name="map_offset" formatted="false">同样相对位置：上 10% → 下 60%（默认）</string>
     <string name="label_drag">滑动怎么处理</string>
     <string name="drag_pass">直接给原 App（能正常滑动，推荐）</string>
     <string name="drag_mirror">镜像到另一半</string>

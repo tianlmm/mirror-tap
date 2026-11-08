@@ -18,6 +18,10 @@
     <string name="btn_plus" formatted="false">＋0.1%</string>
     <string name="split_hint">上半区负责接收你的手指，下半区负责替你点。分隔线可以拖动。</string>
 
+    <string name="section_calib" formatted="false">校准（点哪 → 落到哪）</string>
+    <string name="calib_value">输入 %1$s%% → 落点 %2$s%%（偏移 %3$s%%）</string>
+    <string name="btn_cal_reset">重置校准</string>
+    <string name="calib_hint">拖上面的实心点选参考位置，再拖下面的圆环到你想要的落点；松手即生效，偏移按 0.1% 记录。</string>
     <string name="section_mirror">第 3 步 · 镜像方向与滑动</string>
     <string name="dir_down">上半屏点 → 下半屏镜像（默认）</string>
     <string name="dir_up">下半屏点 → 上半屏镜像</string>

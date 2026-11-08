@@ -70,6 +70,7 @@ public class MirrorOverlayService extends Service
 
     private MirrorPanel panel;
     private DividerHandle handle;
+    private DividerStrip divider;
 
     private int screenWidth;
     private int screenHeight;
@@ -85,6 +86,7 @@ public class MirrorOverlayService extends Service
     private boolean panelAttached = false;
     private boolean panelTouchable = true;
     private boolean handleAttached = false;
+    private boolean dividerAttached = false;
     private long lastToastAt = 0L;
     private long suppressHandleUntil = 0L;
 
@@ -184,6 +186,9 @@ public class MirrorOverlayService extends Service
             addPanel();
         }
 
+        divider = new DividerStrip(this);
+        dividerAttached = addLayer(divider, screenWidth, dividerHeight(), 0, dividerY(), false);
+
         handle = new DividerHandle(this);
         handle.setListener(this);
         handle.setPaused(paused);
@@ -231,6 +236,14 @@ public class MirrorOverlayService extends Service
 
     private int panelHeight() {
         return Math.max(dp(24), panelBottom() - panelTop());
+    }
+
+    private int dividerHeight() {
+        return Math.round(DividerStrip.HEIGHT_DP * getResources().getDisplayMetrics().density);
+    }
+
+    private int dividerY() {
+        return splitPx() - dividerHeight() / 2;
     }
 
     private int handleX() {
@@ -410,6 +423,9 @@ public class MirrorOverlayService extends Service
         if (panelAttached) {
             updateLayer(panel, screenWidth, panelHeight(), 0, panelTop());
         }
+        if (dividerAttached) {
+            updateLayer(divider, screenWidth, dividerHeight(), 0, dividerY());
+        }
         if (handleAttached) {
             updateLayer(handle, handleWidth(), handleHeight(), handleX(), handleY());
         }
@@ -433,7 +449,12 @@ public class MirrorOverlayService extends Service
                     panel.cancelTouch();
                 }
                 removePanel();
+                removeLayer(divider);
+                dividerAttached = false;
             } else if (!panelAttached) {
+                if (!dividerAttached && divider != null) {
+                    dividerAttached = addLayer(divider, screenWidth, dividerHeight(), 0, dividerY(), false);
+                }
                 addPanel();
                 restackHandle();
             }
@@ -459,7 +480,9 @@ public class MirrorOverlayService extends Service
 
     private void teardown() {
         removePanel();
+        removeLayer(divider);
         removeLayer(handle);
+        dividerAttached = false;
         handleAttached = false;
         panel = null;
         handle = null;
@@ -532,13 +555,15 @@ public class MirrorOverlayService extends Service
                     restoreTouchable.run();
                     return;
                 }
-                boolean ok = svc.stroke(Collections.singletonList(origin), duration, restoreTouchable);
+                // 原位点按用短一点的按下时长，缩短触摸层缺席的时间
+                long tapDuration = Math.min(duration, 40L);
+                boolean ok = svc.stroke(Collections.singletonList(origin), tapDuration, restoreTouchable);
                 record(origin, target, true, ok);
                 if (!ok) {
                     restoreTouchable.run();
                 }
             }
-        }, 80L);
+        }, 50L);
         handler.postDelayed(restoreTouchable, duration + 1200L);
     }
 
@@ -604,26 +629,13 @@ public class MirrorOverlayService extends Service
         handler.postDelayed(restoreTouchable, duration + 900L);
     }
 
-    /**
-     * 把触摸点映射到另一半。
-     * mirror = 关于分隔线对称（10% ↔ 90%）；offset = 同样相对位置（10% → 那一半的 10%）。
-     */
+    /** 把触摸点映射到另一半（和校准界面共用 {@link Mapping}）。 */
     private float mapY(float y) {
-        float splitY = screenHeight * split;
-        if (!Prefs.MAP_OFFSET.equals(mapMode)) {
-            return 2f * splitY - y;
-        }
-        // 按整半边等比：上半 [0, 分隔线] → 下半 [分隔线, 屏幕底]，
-        // 这样 10% 会精确落在 60%（分隔线在 50% 时），不受状态栏/导航栏影响
-        float inTop = downDirection ? 0f : splitY;
-        float inBottom = downDirection ? splitY : screenHeight;
-        float outTop = downDirection ? splitY : 0f;
-        float outBottom = downDirection ? screenHeight : splitY;
-        float inHeight = Math.max(1f, inBottom - inTop);
-        float outHeight = Math.max(1f, outBottom - outTop);
-        float t = (y - inTop) / inHeight;
-        t = Math.max(0f, Math.min(1f, t));
-        return outTop + t * outHeight;
+        float pct = y / Math.max(1f, screenHeight);
+        float mapped = Mapping.map(pct, split, downDirection,
+                Prefs.MAP_OFFSET.equals(mapMode),
+                Prefs.calGain(this), Prefs.calOffset(this));
+        return mapped * screenHeight;
     }
 
     private float clampX(float x) {

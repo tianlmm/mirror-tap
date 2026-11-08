@@ -17,6 +17,8 @@ public final class Prefs {
     public static final String KEY_TAP_ORIGIN = "tap_origin";
     public static final String KEY_MAP_MODE = "map_mode";
     public static final String KEY_LOCK_SPLIT = "lock_split";
+    public static final String KEY_CAL_OFFSET = "cal_offset";
+    public static final String KEY_CAL_GAIN = "cal_gain";
 
     /** 对称镜像：10% ↔ 90% */
     public static final String MAP_MIRROR = "mirror";
@@ -86,6 +88,25 @@ public final class Prefs {
     /** 点按时是否也点一下原位置（默认开启：上半屏本身也能点）。 */
     public static boolean tapOrigin(Context c) {
         return sp(c).getBoolean(KEY_TAP_ORIGIN, true);
+    }
+
+    /** 校准：整体落点偏移，单位是屏幕高度的比例（±0.1 表示 ±10% 屏高）。 */
+    public static float calOffset(Context c) {
+        return sp(c).getFloat(KEY_CAL_OFFSET, 0f);
+    }
+
+    public static void setCalOffset(Context c, float v) {
+        sp(c).edit().putFloat(KEY_CAL_OFFSET, Math.max(-0.15f, Math.min(0.15f, v))).apply();
+    }
+
+    /** 校准：输出半边的缩放，1.0 为原样。 */
+    public static float calGain(Context c) {
+        float v = sp(c).getFloat(KEY_CAL_GAIN, 1f);
+        return Math.max(0.5f, Math.min(1.5f, v));
+    }
+
+    public static void setCalGain(Context c, float v) {
+        sp(c).edit().putFloat(KEY_CAL_GAIN, Math.max(0.5f, Math.min(1.5f, v))).apply();
     }
 
     /** 锁住分隔线：把手不能拖动，避免被误触/镜像点击带跑。 */

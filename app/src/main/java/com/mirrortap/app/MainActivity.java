@@ -33,6 +33,8 @@ public class MainActivity extends Activity {
     private RadioGroup dragGroup;
     private RadioGroup mapGroup;
     private TextView diagState;
+    private CalibrationView calibView;
+    private TextView calibValue;
     private TextView testTarget;
     private int testCount;
     private boolean syncing;
@@ -48,6 +50,8 @@ public class MainActivity extends Activity {
         runState = findViewById(R.id.run_state);
         seekBar = findViewById(R.id.seek_split);
         toggleButton = findViewById(R.id.btn_toggle);
+        calibView = findViewById(R.id.calib_view);
+        calibValue = findViewById(R.id.calib_value);
         diagState = findViewById(R.id.diag_state);
         testTarget = findViewById(R.id.test_target);
         testTarget.setText(getString(R.string.test_target, testCount));
@@ -81,6 +85,26 @@ public class MainActivity extends Activity {
 
             @Override
             public void onStopTrackingTouch(SeekBar sb) {
+            }
+        });
+
+        calibView.setListener((inputPct, outputPct, movedOutput) -> {
+            if (movedOutput) {
+                float base = Mapping.map(inputPct, Prefs.split(this),
+                        Prefs.isDownDirection(this), isOffsetMode(), Prefs.calGain(this), 0f);
+                Prefs.setCalOffset(this, outputPct - base);
+                if (MirrorOverlayService.isRunning()) {
+                    reloadService();
+                }
+            }
+            syncCalibrationView();
+        });
+        findViewById(R.id.btn_cal_reset).setOnClickListener(v -> {
+            Prefs.setCalOffset(this, 0f);
+            Prefs.setCalGain(this, 1f);
+            syncCalibrationView();
+            if (MirrorOverlayService.isRunning()) {
+                reloadService();
             }
         });
 
@@ -240,6 +264,7 @@ public class MainActivity extends Activity {
             seekBar.setProgress(progress);
         }
         updateSplitLabel();
+        syncCalibrationView();
         syncChoiceGroups();
 
         boolean connected = TapInjectorService.isConnected();
@@ -247,6 +272,30 @@ public class MainActivity extends Activity {
         diagState.setVisibility(running || connected ? TextView.VISIBLE : TextView.GONE);
         diagState.setText("无障碍" + (connected ? "已连接" : "未连接")
                 + " · " + (last.isEmpty() ? "还没有镜像过" : last));
+    }
+
+    private boolean isOffsetMode() {
+        return Prefs.MAP_OFFSET.equals(Prefs.mapMode(this));
+    }
+
+    /** 按当前参数重算校准图上的落点，保证预览和实际一致。 */
+    private void syncCalibrationView() {
+        if (calibView == null) {
+            return;
+        }
+        float split = Prefs.split(this);
+        boolean down = Prefs.isDownDirection(this);
+        float input = Math.min(calibView.getInputPct(), split - 0.01f);
+        float output = Mapping.map(input, split, down, isOffsetMode(),
+                Prefs.calGain(this), Prefs.calOffset(this));
+        calibView.setSplit(split);
+        calibView.setPoints(input, output);
+        if (calibValue != null) {
+            calibValue.setText(getString(R.string.calib_value,
+                    String.format(Locale.US, "%.1f", input * 100f),
+                    String.format(Locale.US, "%.1f", output * 100f),
+                    String.format(Locale.US, "%+.1f", Prefs.calOffset(this) * 100f)));
+        }
     }
 
     private void updateSplitLabel() {

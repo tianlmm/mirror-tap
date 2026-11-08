@@ -206,27 +206,6 @@ public class MirrorPanel extends View {
             canvas.drawRect(0, 0, w, h, paint);
         }
 
-        // 分隔线：画在朝向另一半的那条边上
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(0x40FFFFFF);
-        if (dividerAtBottom) {
-            canvas.drawRect(0, h - density, w, h, paint);
-        } else {
-            canvas.drawRect(0, 0, w, density, paint);
-        }
-
-        // 两端绿色小握把，提示这条线可以拖
-        paint.setColor(0x552FE3A0);
-        float gripW = 26 * density;
-        float gripH = 3 * density;
-        if (dividerAtBottom) {
-            canvas.drawRoundRect(0, h - gripH, gripW, h, gripH, gripH, paint);
-            canvas.drawRoundRect(w - gripW, h - gripH, w, h, gripH, gripH, paint);
-        } else {
-            canvas.drawRoundRect(0, 0, gripW, gripH, gripH, gripH, paint);
-            canvas.drawRoundRect(w - gripW, 0, w, gripH, gripH, gripH, paint);
-        }
-
         // 手指按下的即时反馈
         if (pressed) {
             float py = downY - offsetY;

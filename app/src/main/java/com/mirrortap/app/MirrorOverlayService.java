@@ -484,32 +484,27 @@ public class MirrorOverlayService extends Service
         }
     }
 
-    /** 先点原处（临时让触摸层不可触摸），再点镜像位置。 */
+    /**
+     * 镜像 + 原位各点一次。
+     * 先注入镜像（立即有反馈），再临时让触摸层不可触摸、把原始那一下注入回原位。
+     */
     private void tapOriginAndMirror(final PointF origin, final PointF target, final long duration) {
-        TapInjectorService injector = TapInjectorService.get();
-        if (injector == null) {
-            toast(getString(R.string.tip_need_a11y));
+        // 1) 先镜像，手感立刻有
+        boolean mirrored = stroke(Collections.singletonList(target), duration, null);
+        record(origin, target, mirrored);
+        if (!mirrored) {
             return;
         }
+        if (Prefs.haptic(this)) {
+            vibrate();
+        }
+
+        // 2) 再把原位那一下补上：先让触摸层让开，再注入
         handler.removeCallbacks(restoreTouchable);
         if (panel != null) {
             panel.setIgnoreTouch(true);
         }
         setPanelTouchable(false);
-
-        final Runnable mirrorStep = new Runnable() {
-            @Override
-            public void run() {
-                boolean ok = stroke(Collections.singletonList(target), duration, restoreTouchable);
-                record(origin, target, ok);
-                if (!ok) {
-                    restoreTouchable.run();
-                } else if (Prefs.haptic(MirrorOverlayService.this)) {
-                    vibrate();
-                }
-            }
-        };
-
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -518,19 +513,12 @@ public class MirrorOverlayService extends Service
                     restoreTouchable.run();
                     return;
                 }
-                boolean ok = svc.stroke(Collections.singletonList(origin), duration,
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                handler.postDelayed(mirrorStep, 40L);
-                            }
-                        });
-                if (!ok) {
+                if (!svc.stroke(Collections.singletonList(origin), duration, restoreTouchable)) {
                     restoreTouchable.run();
                 }
             }
-        }, 70L);
-        handler.postDelayed(restoreTouchable, duration * 2L + 1200L);
+        }, 80L);
+        handler.postDelayed(restoreTouchable, duration + 900L);
     }
 
     private void record(PointF origin, PointF target, boolean ok) {

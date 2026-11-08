@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
         });
 
         setupChoiceGroups();
-        bindCheck(R.id.cb_tap_origin, Prefs.KEY_TAP_ORIGIN, false, false);
+        bindCheck(R.id.cb_tap_origin, Prefs.KEY_TAP_ORIGIN, true, false);
         bindCheck(R.id.cb_haptic, Prefs.KEY_HAPTIC, true, false);
         bindCheck(R.id.cb_tint, Prefs.KEY_TINT, true, true);
         bindCheck(R.id.cb_boot, Prefs.KEY_BOOT, false, false);

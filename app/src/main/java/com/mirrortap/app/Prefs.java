@@ -82,9 +82,9 @@ public final class Prefs {
         sp(c).edit().putString(key, value).apply();
     }
 
-    /** 点按时是否也点一下原位置（默认只镜像）。 */
+    /** 点按时是否也点一下原位置（默认开启：上半屏本身也能点）。 */
     public static boolean tapOrigin(Context c) {
-        return sp(c).getBoolean(KEY_TAP_ORIGIN, false);
+        return sp(c).getBoolean(KEY_TAP_ORIGIN, true);
     }
 
     public static boolean haptic(Context c) {

@@ -11,6 +11,8 @@ import android.provider.Settings;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +25,9 @@ public class MainActivity extends Activity {
     private TextView runState;
     private SeekBar seekBar;
     private Button toggleButton;
+    private RadioGroup directionGroup;
+    private RadioGroup dragGroup;
+    private boolean syncing;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,7 +68,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        bindCheck(R.id.cb_drag, Prefs.KEY_DRAG, true, true);
+        setupChoiceGroups();
         bindCheck(R.id.cb_haptic, Prefs.KEY_HAPTIC, true, false);
         bindCheck(R.id.cb_tint, Prefs.KEY_TINT, true, true);
         bindCheck(R.id.cb_boot, Prefs.KEY_BOOT, false, false);
@@ -71,6 +76,66 @@ public class MainActivity extends Activity {
         toggleButton.setOnClickListener(v -> toggleService());
 
         updateSplitLabel();
+    }
+
+    private void setupChoiceGroups() {
+        directionGroup = findViewById(R.id.rg_direction);
+        dragGroup = findViewById(R.id.rg_drag);
+
+        directionGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (syncing) {
+                return;
+            }
+            if (checkedId != R.id.rb_dir_down && checkedId != R.id.rb_dir_up) {
+                return;
+            }
+            Prefs.putString(this, Prefs.KEY_DIRECTION,
+                    checkedId == R.id.rb_dir_up ? Prefs.DIR_UP : Prefs.DIR_DOWN);
+            if (MirrorOverlayService.isRunning()) {
+                reloadService();
+            }
+        });
+
+        dragGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (syncing) {
+                return;
+            }
+            String mode;
+            if (checkedId == R.id.rb_drag_mirror) {
+                mode = Prefs.DRAG_MIRROR;
+            } else if (checkedId == R.id.rb_drag_ignore) {
+                mode = Prefs.DRAG_IGNORE;
+            } else if (checkedId == R.id.rb_drag_pass) {
+                mode = Prefs.DRAG_PASS;
+            } else {
+                return;
+            }
+            Prefs.putString(this, Prefs.KEY_DRAG_MODE, mode);
+            if (MirrorOverlayService.isRunning()) {
+                reloadService();
+            }
+        });
+
+        syncChoiceGroups();
+    }
+
+    private void syncChoiceGroups() {
+        if (directionGroup == null || dragGroup == null) {
+            return;
+        }
+        syncing = true;
+        int dirId = Prefs.isDownDirection(this) ? R.id.rb_dir_down : R.id.rb_dir_up;
+        if (directionGroup.getCheckedRadioButtonId() != dirId) {
+            directionGroup.check(dirId);
+        }
+        String mode = Prefs.dragMode(this);
+        int dragId = Prefs.DRAG_MIRROR.equals(mode) ? R.id.rb_drag_mirror
+                : Prefs.DRAG_IGNORE.equals(mode) ? R.id.rb_drag_ignore
+                : R.id.rb_drag_pass;
+        if (dragGroup.getCheckedRadioButtonId() != dragId) {
+            dragGroup.check(dragId);
+        }
+        syncing = false;
     }
 
     @Override
@@ -120,6 +185,7 @@ public class MainActivity extends Activity {
             seekBar.setProgress(progress);
         }
         updateSplitLabel();
+        syncChoiceGroups();
     }
 
     private void updateSplitLabel() {

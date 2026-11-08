@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.accessibility.AccessibilityEvent;
@@ -62,6 +64,13 @@ public class TapInjectorService extends AccessibilityService {
      * @param durationMs 按下到抬起的时长，点一下用 40~60ms
      */
     public boolean stroke(List<PointF> points, long durationMs) {
+        return stroke(points, durationMs, null);
+    }
+
+    /**
+     * @param onFinish 手势播完（或被取消）后回调，用来恢复悬浮层的可触摸标志
+     */
+    public boolean stroke(List<PointF> points, long durationMs, final Runnable onFinish) {
         if (points == null || points.isEmpty()) {
             return false;
         }
@@ -80,7 +89,21 @@ public class TapInjectorService extends AccessibilityService {
             GestureDescription gesture = new GestureDescription.Builder()
                     .addStroke(stroke)
                     .build();
-            return dispatchGesture(gesture, null, null);
+            GestureResultCallback callback = null;
+            if (onFinish != null) {
+                callback = new GestureResultCallback() {
+                    @Override
+                    public void onCompleted(GestureDescription gestureDescription) {
+                        onFinish.run();
+                    }
+
+                    @Override
+                    public void onCancelled(GestureDescription gestureDescription) {
+                        onFinish.run();
+                    }
+                };
+            }
+            return dispatchGesture(gesture, callback, new Handler(Looper.getMainLooper()));
         } catch (Throwable t) {
             return false;
         }

@@ -14,11 +14,11 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * 上半区的触摸层，同时也是这一层的「显示层」：
- * 分隔线、上半区淡色底、手指落点反馈都画在它自己身上，
- * 所以整个应用只有两个窗口 —— 它自己 + 右侧把手，没有任何全屏悬浮窗。
+ * 负责接住「手指那一半」的触摸，同时也负责画分隔线、淡色底和落点反馈。
+ * 整个应用只有两个窗口：它 + 右侧把手，没有全屏悬浮窗。
  *
- * 窗口只铺到分隔线高度，下半屏完全不受影响。
+ * 它铺在屏幕的上半部分或下半部分（由 {@link #setDividerAtBottom(boolean)} 决定），
+ * 另一半始终留给系统正常触摸。
  */
 public class MirrorPanel extends View {
 
@@ -37,8 +37,9 @@ public class MirrorPanel extends View {
     private final int touchSlop;
 
     private Listener listener;
-    private boolean mirrorDrag = true;
     private boolean tintEnabled = true;
+    private boolean dividerAtBottom = true;
+    private int offsetY;
 
     private float downX;
     private float downY;
@@ -72,16 +73,23 @@ public class MirrorPanel extends View {
         this.listener = listener;
     }
 
-    public void setMirrorDrag(boolean mirrorDrag) {
-        this.mirrorDrag = mirrorDrag;
-    }
-
     public void setTintEnabled(boolean enabled) {
         this.tintEnabled = enabled;
         invalidate();
     }
 
-    /** 手指还在上面时不要画残留。 */
+    /** true = 分隔线画在自己下边缘（上半屏输入）；false = 画在上边缘（下半屏输入）。 */
+    public void setDividerAtBottom(boolean atBottom) {
+        this.dividerAtBottom = atBottom;
+        invalidate();
+    }
+
+    /** 自己在屏幕上的纵向偏移，用来把屏幕坐标换算成自己的坐标。 */
+    public void setOffsetY(int offsetY) {
+        this.offsetY = offsetY;
+        invalidate();
+    }
+
     public void cancelTouch() {
         pressed = false;
         multiTouch = false;
@@ -116,7 +124,7 @@ public class MirrorPanel extends View {
                         pressed = false;
                         invalidate();
                     }
-                    if (mirrorDrag && distance(x, y, lastX, lastY) > touchSlop * 0.35f) {
+                    if (distance(x, y, lastX, lastY) > touchSlop * 0.35f) {
                         points.add(new PointF(x, y));
                         lastX = x;
                         lastY = y;
@@ -134,9 +142,9 @@ public class MirrorPanel extends View {
                 }
                 long held = SystemClock.uptimeMillis() - downAt;
                 boolean moved = distance(x, y, downX, downY) > touchSlop;
-                addRipple(downX, downY);
+                addRipple(downX, downY - offsetY);
                 if (listener != null) {
-                    if (mirrorDrag && moved && points.size() > 1) {
+                    if (moved && points.size() > 1) {
                         points.add(new PointF(x, y));
                         listener.onMirrorDrag(new ArrayList<>(points), held);
                     } else {
@@ -175,34 +183,44 @@ public class MirrorPanel extends View {
             return;
         }
 
-        // 上半区淡色底：一眼看出哪半边是“手指区”
+        // 手指区的淡色底：一眼看出哪半边被接管了
         if (tintEnabled) {
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(0x0DFFFFFF);
             canvas.drawRect(0, 0, w, h, paint);
         }
 
-        // 分隔线：画在自己的下边缘
+        // 分隔线：画在朝向另一半的那条边上
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(0x40FFFFFF);
-        canvas.drawRect(0, h - density, w, h, paint);
+        if (dividerAtBottom) {
+            canvas.drawRect(0, h - density, w, h, paint);
+        } else {
+            canvas.drawRect(0, 0, w, density, paint);
+        }
 
         // 两端绿色小握把，提示这条线可以拖
         paint.setColor(0x552FE3A0);
         float gripW = 26 * density;
         float gripH = 3 * density;
-        canvas.drawRoundRect(0, h - gripH, gripW, h, gripH, gripH, paint);
-        canvas.drawRoundRect(w - gripW, h - gripH, w, h, gripH, gripH, paint);
+        if (dividerAtBottom) {
+            canvas.drawRoundRect(0, h - gripH, gripW, h, gripH, gripH, paint);
+            canvas.drawRoundRect(w - gripW, h - gripH, w, h, gripH, gripH, paint);
+        } else {
+            canvas.drawRoundRect(0, 0, gripW, gripH, gripH, gripH, paint);
+            canvas.drawRoundRect(w - gripW, 0, w, gripH, gripH, gripH, paint);
+        }
 
         // 手指按下的即时反馈
         if (pressed) {
+            float py = downY - offsetY;
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(1.5f * density);
             paint.setColor(0x883DDC97);
-            canvas.drawCircle(downX, downY, 22 * density, paint);
+            canvas.drawCircle(downX, py, 22 * density, paint);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(0xAA3DDC97);
-            canvas.drawCircle(downX, downY, 5 * density, paint);
+            canvas.drawCircle(downX, py, 5 * density, paint);
         }
 
         // 抬起后的水波纹

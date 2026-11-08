@@ -19,6 +19,7 @@ import android.os.Vibrator;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -30,11 +31,15 @@ import java.util.List;
  * 悬浮层服务。
  *
  * 只有两个窗口，没有全屏窗口：
- *   1) MirrorPanel —— 从屏幕顶部铺到分隔线，负责接住上半区触摸，也负责画分隔线；
- *   2) DividerHandle —— 分隔线下方右侧的小把手，拖动改比例、轻点暂停、长按退出。
+ *   1) MirrorPanel —— 只铺「手指那一半」（上半或下半，可切换），画分隔线，接住触摸；
+ *   2) DividerHandle —— 分隔线旁边的小把手，拖动改比例、轻点暂停、长按退出。
  *
- * 镜像规则：y' = 2 × 分隔线 − y，x 不变。
- * 暂停时把 MirrorPanel 整个移除，上半区触摸立刻还给系统，只剩一个 34×62dp 的把手。
+ * 镜像规则（两个方向通用）：y' = 2 × 分隔线 − y，x 不变。
+ *
+ * 滑动有三种处理方式：
+ *   pass   —— 原样注入回原位置（临时把触摸层设为不可触摸），App 能正常滚动；
+ *   mirror —— 镜像到另一半；
+ *   ignore —— 只镜像点按。
  */
 public class MirrorOverlayService extends Service
         implements MirrorPanel.Listener, DividerHandle.Listener {
@@ -61,12 +66,25 @@ public class MirrorOverlayService extends Service
 
     private int screenWidth;
     private int screenHeight;
+    private int statusBarTop;
+    private int navBarBottom;
     private float split = Prefs.DEFAULT_SPLIT;
+    private boolean downDirection = true;
+    private String dragMode = Prefs.DRAG_PASS;
+
     private boolean paused = false;
     private boolean attached = false;
     private boolean panelAttached = false;
+    private boolean panelTouchable = true;
     private boolean handleAttached = false;
     private long lastToastAt = 0L;
+
+    private final Runnable restoreTouchable = new Runnable() {
+        @Override
+        public void run() {
+            setPanelTouchable(true);
+        }
+    };
 
     public static boolean isRunning() {
         return sRunning;
@@ -87,7 +105,7 @@ public class MirrorOverlayService extends Service
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         createChannel();
-        split = Prefs.split(this);
+        loadPrefs();
     }
 
     @Override
@@ -108,13 +126,19 @@ public class MirrorOverlayService extends Service
         }
 
         if (ACTION_RELOAD.equals(action)) {
-            split = Prefs.split(this);
+            loadPrefs();
             applyPrefs();
         }
 
         ensureAttached();
         layoutAll();
         return START_STICKY;
+    }
+
+    private void loadPrefs() {
+        split = Prefs.split(this);
+        downDirection = Prefs.isDownDirection(this);
+        dragMode = Prefs.dragMode(this);
     }
 
     // ---------------------------------------------------------------- 窗口
@@ -143,7 +167,6 @@ public class MirrorOverlayService extends Service
         panel = new MirrorPanel(this);
         panel.setListener(this);
         panel.setTintEnabled(Prefs.tint(this));
-        panel.setMirrorDrag(Prefs.mirrorDrag(this));
         if (!paused) {
             addPanel();
         }
@@ -154,6 +177,7 @@ public class MirrorOverlayService extends Service
         handleAttached = addLayer(handle, handleWidth(), handleHeight(), handleX(), handleY(), true);
 
         attached = true;
+        applyPrefs();
         layoutAll();
     }
 
@@ -169,8 +193,30 @@ public class MirrorOverlayService extends Service
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private int panelHeight() {
+    private int splitPx() {
         return Math.round(screenHeight * split);
+    }
+
+    /** 触摸层顶边：上半屏输入时避开状态栏，下半屏输入时就是分隔线。 */
+    private int panelTop() {
+        int splitY = splitPx();
+        if (downDirection) {
+            return Math.min(statusBarTop, Math.max(0, splitY - dp(48)));
+        }
+        return splitY;
+    }
+
+    /** 触摸层底边：上半屏输入时到分隔线，下半屏输入时避开导航栏。 */
+    private int panelBottom() {
+        int splitY = splitPx();
+        if (downDirection) {
+            return splitY;
+        }
+        return Math.max(splitY + dp(48), screenHeight - navBarBottom);
+    }
+
+    private int panelHeight() {
+        return Math.max(dp(24), panelBottom() - panelTop());
     }
 
     private int handleX() {
@@ -178,7 +224,11 @@ public class MirrorOverlayService extends Service
     }
 
     private int handleY() {
-        return panelHeight() + dp(6);
+        int splitY = splitPx();
+        if (downDirection) {
+            return splitY + dp(6);
+        }
+        return Math.max(0, splitY - handleHeight() - dp(6));
     }
 
     private WindowManager.LayoutParams makeParams(int w, int h, int x, int y, boolean touchable) {
@@ -218,11 +268,13 @@ public class MirrorOverlayService extends Service
         if (panel == null || panelAttached) {
             return;
         }
-        panelAttached = addLayer(panel, screenWidth, panelHeight(), 0, 0, true);
+        panelAttached = addLayer(panel, screenWidth, panelHeight(), 0, panelTop(), true);
+        panelTouchable = true;
     }
 
     private void removePanel() {
         panelAttached = false;
+        panelTouchable = true;
         if (panel == null) {
             return;
         }
@@ -233,6 +285,27 @@ public class MirrorOverlayService extends Service
         }
         try {
             windowManager.removeView(panel);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** 滑动要“穿透”时，把触摸层临时设成不可触摸，让注入的手势落到下面的 App 上。 */
+    private void setPanelTouchable(boolean touchable) {
+        if (panel == null || !panelAttached || panelTouchable == touchable) {
+            return;
+        }
+        panelTouchable = touchable;
+        try {
+            WindowManager.LayoutParams lp = (WindowManager.LayoutParams) panel.getLayoutParams();
+            if (lp == null) {
+                return;
+            }
+            if (touchable) {
+                lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            } else {
+                lp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            }
+            windowManager.updateViewLayout(panel, lp);
         } catch (Throwable ignored) {
         }
     }
@@ -262,11 +335,16 @@ public class MirrorOverlayService extends Service
                         windowManager.getMaximumWindowMetrics().getBounds();
                 screenWidth = bounds.width();
                 screenHeight = bounds.height();
+                WindowInsets insets = windowManager.getCurrentWindowMetrics().getWindowInsets();
+                statusBarTop = insets.getInsetsIgnoringVisibility(WindowInsets.Type.statusBars()).top;
+                navBarBottom = insets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars()).bottom;
             } else {
                 android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
                 windowManager.getDefaultDisplay().getRealMetrics(dm);
                 screenWidth = dm.widthPixels;
                 screenHeight = dm.heightPixels;
+                statusBarTop = resourceSize("status_bar_height");
+                navBarBottom = 0;
             }
         } catch (Throwable ignored) {
         }
@@ -275,6 +353,21 @@ public class MirrorOverlayService extends Service
             screenWidth = dm.widthPixels;
             screenHeight = dm.heightPixels;
         }
+        if (statusBarTop < 0) {
+            statusBarTop = 0;
+        }
+        if (navBarBottom < 0) {
+            navBarBottom = 0;
+        }
+    }
+
+    private int resourceSize(String name) {
+        try {
+            int id = getResources().getIdentifier(name, "dimen", "android");
+            return id > 0 ? getResources().getDimensionPixelSize(id) : 0;
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     private void layoutAll() {
@@ -282,8 +375,12 @@ public class MirrorOverlayService extends Service
             return;
         }
         readMetrics();
+        if (panel != null) {
+            panel.setDividerAtBottom(downDirection);
+            panel.setOffsetY(panelTop());
+        }
         if (panelAttached) {
-            updateLayer(panel, screenWidth, panelHeight(), 0, 0);
+            updateLayer(panel, screenWidth, panelHeight(), 0, panelTop());
         }
         if (handleAttached) {
             updateLayer(handle, handleWidth(), handleHeight(), handleX(), handleY());
@@ -292,9 +389,10 @@ public class MirrorOverlayService extends Service
 
     private void applyPrefs() {
         if (panel != null) {
-            panel.setMirrorDrag(Prefs.mirrorDrag(this));
             panel.setTintEnabled(Prefs.tint(this));
+            panel.setDividerAtBottom(downDirection);
         }
+        layoutAll();
     }
 
     private void setPaused(boolean value) {
@@ -303,7 +401,6 @@ public class MirrorOverlayService extends Service
 
         if (attached) {
             if (paused) {
-                // 关键：暂停就把上半区的窗口整个拿掉，屏幕上只剩一个小把手
                 if (panel != null) {
                     panel.cancelTouch();
                 }
@@ -360,10 +457,10 @@ public class MirrorOverlayService extends Service
 
     @Override
     public void onMirrorTap(float x, float y, long heldMs) {
-        float splitPx = screenHeight * split;
+        float splitY = screenHeight * split;
         long duration = heldMs >= LONG_PRESS_MS ? Math.min(heldMs, 1500L) : TAP_DURATION_MS;
         inject(Collections.singletonList(
-                new PointF(clampX(x), clampY(2f * splitPx - y))), duration);
+                new PointF(clampX(x), clampY(2f * splitY - y))), duration);
     }
 
     @Override
@@ -371,13 +468,40 @@ public class MirrorOverlayService extends Service
         if (points == null || points.isEmpty()) {
             return;
         }
-        float splitPx = screenHeight * split;
+        if (Prefs.DRAG_IGNORE.equals(dragMode)) {
+            return;
+        }
+        long duration = Math.max(60L, Math.min(heldMs, 1500L));
+
+        if (Prefs.DRAG_PASS.equals(dragMode)) {
+            // 原样还给原 App：临时把触摸层设为不可触摸，注入后再恢复
+            passThrough(new ArrayList<>(points), duration);
+            return;
+        }
+
+        float splitY = screenHeight * split;
         List<PointF> mirrored = new ArrayList<>(points.size());
         for (PointF p : points) {
-            mirrored.add(new PointF(clampX(p.x), clampY(2f * splitPx - p.y)));
+            mirrored.add(new PointF(clampX(p.x), clampY(2f * splitY - p.y)));
         }
-        long duration = Math.max(120L, Math.min(heldMs, 1500L));
         inject(mirrored, duration);
+    }
+
+    private void passThrough(final List<PointF> points, long duration) {
+        TapInjectorService injector = TapInjectorService.get();
+        if (injector == null) {
+            toast(getString(R.string.tip_need_a11y));
+            return;
+        }
+        handler.removeCallbacks(restoreTouchable);
+        setPanelTouchable(false);
+        boolean ok = injector.stroke(points, duration, restoreTouchable);
+        if (!ok) {
+            restoreTouchable.run();
+            return;
+        }
+        // 兜底：回调没来也要恢复可触摸
+        handler.postDelayed(restoreTouchable, duration + 700L);
     }
 
     private float clampX(float x) {
@@ -432,10 +556,10 @@ public class MirrorOverlayService extends Service
     @Override
     public void onHandleTap() {
         setPaused(!paused);
-        toast(paused ? "已暂停 · 上半区触摸已还给系统" : "已恢复镜像");
+        toast(paused ? "已暂停 · 触摸已还给系统" : "已恢复镜像");
     }
 
-    /** 长按把手：兜底退出，防止任何异常情况下屏幕被我们的窗口占着。 */
+    /** 长按把手：兜底退出。 */
     @Override
     public void onHandleLongPress() {
         toast("已退出镜像点击");
@@ -509,7 +633,6 @@ public class MirrorOverlayService extends Service
         if (!attached) {
             return;
         }
-        // 转屏 / 分屏后窗口尺寸要重建，等系统布局稳定再动
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -525,6 +648,7 @@ public class MirrorOverlayService extends Service
     private void shutdown() {
         sRunning = false;
         sPaused = false;
+        handler.removeCallbacks(restoreTouchable);
         teardown();
         stopForeground(true);
         stopSelf();

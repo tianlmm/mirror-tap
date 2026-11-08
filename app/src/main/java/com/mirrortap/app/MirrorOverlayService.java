@@ -208,11 +208,12 @@ public class MirrorOverlayService extends Service
         return Math.round(screenHeight * split);
     }
 
-    /** 触摸层顶边：上半屏输入时避开状态栏，下半屏输入时就是分隔线。 */
+    /** 触摸层顶边：上半屏输入时让开状态栏（至少 24dp），下半屏输入时就是分隔线。 */
     private int panelTop() {
         int splitY = splitPx();
         if (downDirection) {
-            return Math.min(statusBarTop, Math.max(0, splitY - dp(48)));
+            int bar = Math.max(statusBarTop, dp(24));
+            return Math.min(bar, Math.max(0, splitY - dp(48)));
         }
         return splitY;
     }
@@ -349,6 +350,10 @@ public class MirrorOverlayService extends Service
                 WindowInsets insets = windowManager.getCurrentWindowMetrics().getWindowInsets();
                 statusBarTop = insets.getInsetsIgnoringVisibility(WindowInsets.Type.statusBars()).top;
                 navBarBottom = insets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars()).bottom;
+                if (statusBarTop <= 0) {
+                    // 某些 ROM 对悬浮窗服务不给 insets，退回资源值
+                    statusBarTop = resourceSize("status_bar_height");
+                }
             } else {
                 android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
                 windowManager.getDefaultDisplay().getRealMetrics(dm);

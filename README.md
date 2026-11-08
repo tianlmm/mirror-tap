@@ -25,11 +25,12 @@
 | 在下半区点一下 | `AccessibilityService.dispatchGesture()` | 系统唯一允许 App「代替用户点击」的官方通道，无需 root、无需 adb |
 | 镜像计算 | — | `y' = 2 × 分隔线 − y`，x 不变 |
 
-镜像层结构（三个窗口，从下往上）：
+窗口结构只有两个，**没有任何全屏悬浮窗**（全屏 overlay 在部分机型上会吃掉整屏触摸，这是 v1.0.1 修掉的问题）：
 
-1. `HudLayer` —— 全屏、`FLAG_NOT_TOUCHABLE`，只画分隔线、上半区淡色底和水波纹落点；
-2. `MirrorPanel` —— 铺满上半区，接收并吞掉触摸，抬起时把镜像路径交给服务；
-3. `DividerHandle` —— 分隔线右侧的小把手，上下拖改比例、轻点暂停/恢复。
+1. `MirrorPanel` —— 从屏幕顶部铺到分隔线，接住上半区触摸，自己画分隔线、淡色底和落点水波纹；
+2. `DividerHandle` —— 分隔线下方右侧的小把手，上下拖改比例、轻点暂停/恢复、长按 0.9 秒退出。
+
+暂停时 `MirrorPanel` 会被 `removeViewImmediate` 整个移除，屏幕上只剩一个 34×62dp 的把手，触摸立即回到系统。
 
 ## 功能
 
@@ -37,7 +38,8 @@
 - 长按也能镜像（按住 ≥ 520ms 会注入一次长按）
 - 可选「镜像拖动」：在上半区滑动，下半区按镜像轨迹滑一次
 - 分隔线 20%~80% 可调，界面里用滑杆，也可以直接拖屏幕右侧的悬浮把手
-- 暂停/恢复（悬浮把手轻点，或通知栏按钮），暂停时上半区触摸立刻还给 App
+- 暂停/恢复（悬浮把手轻点，或通知栏按钮），暂停时上半区窗口整体移除、触摸立刻还给 App
+- 长按把手 0.9 秒 = 直接退出（兜底，任何异常情况下都能脱身）
 - 落点水波纹、震动反馈、上半区淡色底，都可以单独关掉
 - 转屏、分屏自动重建悬浮层；可选开机自启
 - 深浅色跟随系统无障碍设置？不，界面固定深色主题，省电、不刺眼
@@ -47,7 +49,7 @@
 ### 方式一：GitHub Actions 直接下载（推荐）
 
 1. 打开仓库的 **Actions** 页 → 最新的 `Build APK` 成功记录；
-2. 页面底部 **Artifacts** 下载 `MirrorTap-apk.zip`，解压得到 `MirrorTap-v1.0.0.apk`（release）和 `MirrorTap-debug-v1.0.0.apk`；
+2. 页面底部 **Artifacts** 下载 `MirrorTap-apk.zip`，解压得到 `MirrorTap-v1.0.1.apk`（release）和 `MirrorTap-debug-v1.0.1.apk`；
 3. 传到手机上点开安装（需要在系统里允许「安装未知来源应用」）。
 
 打 tag（`git tag v1.0.0 && git push --tags`）时，工作流会额外把 APK 挂到 **Releases** 页面，手机浏览器直接点链接即可下载。
@@ -73,7 +75,7 @@ cd MirrorTap
 3. 回到 App，点「启动镜像」；
 4. 打开任意 App，点上半屏 —— 下半屏的镜像位置会被点一下；
 5. 右侧悬浮把手：上下拖 = 调整分隔线，轻点 = 暂停/恢复；
-6. 结束使用：App 内点「停止镜像」，或通知栏点「退出」。
+6. 结束使用：App 内点「停止镜像」，或通知栏点「退出」，或长按悬浮把手 0.9 秒。
 
 ## 权限与隐私
 
@@ -111,8 +113,7 @@ App 无网络权限，不联网、不收集任何数据，所有设置只存在�
 app/src/main/java/com/mirrortap/app/
 ├── MainActivity.java          权限引导 + 参数设置
 ├── MirrorOverlayService.java  前台服务，三个悬浮窗口的创建与镜像分发
-├── MirrorPanel.java           上半区触摸层
-├── HudLayer.java              分隔线 / 水波纹绘制层
+├── MirrorPanel.java           上半区触摸层 + 分隔线/水波纹绘制
 ├── DividerHandle.java         可拖动的悬浮把手
 ├── TapInjectorService.java    无障碍服务，dispatchGesture 注入
 ├── PreviewView.java           首页示意图动画

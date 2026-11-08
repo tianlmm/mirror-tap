@@ -66,7 +66,6 @@ public class MainActivity extends Activity {
         bindCheck(R.id.cb_drag, Prefs.KEY_DRAG, true, true);
         bindCheck(R.id.cb_haptic, Prefs.KEY_HAPTIC, true, false);
         bindCheck(R.id.cb_tint, Prefs.KEY_TINT, true, true);
-        bindCheck(R.id.cb_ghost, Prefs.KEY_GHOST, true, false);
         bindCheck(R.id.cb_boot, Prefs.KEY_BOOT, false, false);
 
         toggleButton.setOnClickListener(v -> toggleService());

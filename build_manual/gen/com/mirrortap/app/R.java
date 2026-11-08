@@ -34,13 +34,12 @@ public final class R {
     public static final int btn_toggle=0x7f030003;
     public static final int cb_boot=0x7f030004;
     public static final int cb_drag=0x7f030005;
-    public static final int cb_ghost=0x7f030006;
-    public static final int cb_haptic=0x7f030007;
-    public static final int cb_tint=0x7f030008;
-    public static final int overlay_state=0x7f030009;
-    public static final int run_state=0x7f03000a;
-    public static final int seek_split=0x7f03000b;
-    public static final int split_value=0x7f03000c;
+    public static final int cb_haptic=0x7f030006;
+    public static final int cb_tint=0x7f030007;
+    public static final int overlay_state=0x7f030008;
+    public static final int run_state=0x7f030009;
+    public static final int seek_split=0x7f03000a;
+    public static final int split_value=0x7f03000b;
   }
   public static final class layout {
     public static final int activity_main=0x7f040000;
@@ -62,26 +61,25 @@ public final class R {
     public static final int notif_title_paused=0x7f05000d;
     public static final int opt_boot=0x7f05000e;
     public static final int opt_drag=0x7f05000f;
-    public static final int opt_ghost=0x7f050010;
-    public static final int opt_haptic=0x7f050011;
-    public static final int opt_tint=0x7f050012;
-    public static final int paused=0x7f050013;
-    public static final int perm_a11y=0x7f050014;
-    public static final int perm_overlay=0x7f050015;
-    public static final int running=0x7f050016;
-    public static final int section_options=0x7f050017;
-    public static final int section_permission=0x7f050018;
-    public static final int section_split=0x7f050019;
-    public static final int section_usage=0x7f05001a;
-    public static final int split_hint=0x7f05001b;
-    public static final int split_value=0x7f05001c;
-    public static final int start=0x7f05001d;
-    public static final int stop=0x7f05001e;
-    public static final int tagline=0x7f05001f;
-    public static final int tip_need_a11y=0x7f050020;
-    public static final int tip_need_overlay=0x7f050021;
-    public static final int tip_no_notif=0x7f050022;
-    public static final int usage=0x7f050023;
+    public static final int opt_haptic=0x7f050010;
+    public static final int opt_tint=0x7f050011;
+    public static final int paused=0x7f050012;
+    public static final int perm_a11y=0x7f050013;
+    public static final int perm_overlay=0x7f050014;
+    public static final int running=0x7f050015;
+    public static final int section_options=0x7f050016;
+    public static final int section_permission=0x7f050017;
+    public static final int section_split=0x7f050018;
+    public static final int section_usage=0x7f050019;
+    public static final int split_hint=0x7f05001a;
+    public static final int split_value=0x7f05001b;
+    public static final int start=0x7f05001c;
+    public static final int stop=0x7f05001d;
+    public static final int tagline=0x7f05001e;
+    public static final int tip_need_a11y=0x7f05001f;
+    public static final int tip_need_overlay=0x7f050020;
+    public static final int tip_no_notif=0x7f050021;
+    public static final int usage=0x7f050022;
   }
   public static final class style {
     public static final int AppTheme=0x7f060000;

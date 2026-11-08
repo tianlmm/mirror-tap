@@ -5,13 +5,16 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
 /**
- * 分隔线右侧的悬浮把手：上下拖动改比例，轻点暂停/恢复。
- * 它整个挂在分隔线下方，所以永远不会和上半区的触摸层抢位置。
+ * 分隔线右侧的悬浮把手：
+ *   上下拖 = 调比例；轻点 = 暂停/恢复；长按 0.9 秒 = 直接退出（兜底）。
+ * 它整个挂在分隔线下方，永远不会和上半区的触摸层抢位置。
  */
 public class DividerHandle extends View {
 
@@ -21,21 +24,38 @@ public class DividerHandle extends View {
         void onHandleDragEnd();
 
         void onHandleTap();
+
+        void onHandleLongPress();
     }
 
     public static final int WIDTH_DP = 34;
     public static final int HEIGHT_DP = 62;
+    private static final long LONG_PRESS_MS = 900L;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private final RectF rect = new RectF();
     private final float density;
     private final int touchSlop;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+
+    private final Runnable longPressRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!dragging && pressed) {
+                longPressed = true;
+                if (listener != null) {
+                    listener.onHandleLongPress();
+                }
+            }
+        }
+    };
 
     private Listener listener;
     private boolean paused;
     private boolean dragging;
     private boolean pressed;
+    private boolean longPressed;
     private float downY;
 
     public DividerHandle(Context context) {
@@ -82,7 +102,6 @@ public class DividerHandle extends View {
         final float cy = h / 2f;
 
         if (paused) {
-            // ▶
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(0xFFFFB84D);
             float s = 7f * density;
@@ -93,7 +112,6 @@ public class DividerHandle extends View {
             path.close();
             canvas.drawPath(path, paint);
         } else {
-            // 上下两个箭头，表示这条线可以拖
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(1.9f * density);
             paint.setStrokeCap(Paint.Cap.ROUND);
@@ -130,13 +148,16 @@ public class DividerHandle extends View {
             case MotionEvent.ACTION_DOWN:
                 pressed = true;
                 dragging = false;
+                longPressed = false;
                 downY = event.getRawY();
+                handler.postDelayed(longPressRunnable, LONG_PRESS_MS);
                 invalidate();
                 return true;
 
             case MotionEvent.ACTION_MOVE:
                 if (!dragging && Math.abs(event.getRawY() - downY) > touchSlop) {
                     dragging = true;
+                    handler.removeCallbacks(longPressRunnable);
                 }
                 if (dragging && listener != null) {
                     listener.onHandleDrag(event.getRawY());
@@ -145,7 +166,13 @@ public class DividerHandle extends View {
 
             case MotionEvent.ACTION_UP:
                 pressed = false;
+                handler.removeCallbacks(longPressRunnable);
                 invalidate();
+                if (longPressed) {
+                    longPressed = false;
+                    dragging = false;
+                    return true;
+                }
                 if (dragging) {
                     if (listener != null) {
                         listener.onHandleDragEnd();
@@ -158,6 +185,7 @@ public class DividerHandle extends View {
 
             case MotionEvent.ACTION_CANCEL:
                 pressed = false;
+                handler.removeCallbacks(longPressRunnable);
                 if (dragging && listener != null) {
                     listener.onHandleDragEnd();
                 }
@@ -166,5 +194,11 @@ public class DividerHandle extends View {
                 return true;
         }
         return super.onTouchEvent(event);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        handler.removeCallbacks(longPressRunnable);
+        super.onDetachedFromWindow();
     }
 }

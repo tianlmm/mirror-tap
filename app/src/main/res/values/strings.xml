@@ -20,7 +20,6 @@
     <string name="opt_drag">镜像拖动（不只是点，滑动也镜像）</string>
     <string name="opt_haptic">点按时震动反馈</string>
     <string name="opt_tint">上半区显示浅色遮罩提示</string>
-    <string name="opt_ghost">在下半区显示落点标记</string>
     <string name="opt_boot">开机自动启动</string>
 
     <string name="start">启动镜像</string>
@@ -29,7 +28,7 @@
     <string name="paused">已暂停（点悬浮把手恢复）</string>
 
     <string name="section_usage">怎么用</string>
-    <string name="usage">1. 两项权限都变绿以后，点「启动镜像」。\n2. 悬浮把手（屏幕右侧的小圆钮）会停在分隔线上：上下拖动它可以调整上下比例，轻点它可以暂停/恢复。\n3. 打开你要用的 App，点屏幕上半区任意位置 —— 下半区对应的镜像位置会被自动点一下。\n4. 想彻底关掉：回到本页点「停止镜像」，或下拉通知栏点「退出」。\n\n注意：上半区的原始触摸会被拦截，不会再传给 App（这是镜像的前提）。银行、支付类 App 可能禁止无障碍注入，属于正常现象。</string>
+    <string name="usage">1. 两项权限都变绿以后，点「启动镜像」。\n2. 屏幕右侧的小把手停在分隔线上：上下拖动 = 调上下比例，轻点 = 暂停 / 恢复，长按 0.9 秒 = 直接退出。\n3. 打开你要用的 App，点屏幕上半区任意位置 —— 下半区对应的镜像位置会被自动点一下。\n4. 暂停时上半区的窗口会被整个移除，屏幕立刻恢复正常，只剩一个小把手；再点一下把手即可恢复。\n\n注意：上半区的原始触摸会被拦截、不再传给 App（这是镜像的前提）。银行、支付类 App 可能禁止无障碍注入，属于正常现象。</string>
 
     <string name="tip_need_overlay">请先允许「显示在其他应用上层」</string>
     <string name="tip_need_a11y">请先在无障碍列表里开启「镜像点击」</string>

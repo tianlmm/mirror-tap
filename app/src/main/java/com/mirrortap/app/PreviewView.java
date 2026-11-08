@@ -35,8 +35,16 @@ public class PreviewView extends View {
     }
 
     @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
+    public void onVisibilityAggregated(boolean isVisible) {
+        super.onVisibilityAggregated(isVisible);
+        if (isVisible) {
+            startAnimation();
+        } else {
+            stopAnimation();
+        }
+    }
+
+    private void startAnimation() {
         if (animator == null) {
             animator = ValueAnimator.ofFloat(0f, 1f);
             animator.setDuration(2600L);
@@ -50,12 +58,16 @@ public class PreviewView extends View {
         }
     }
 
-    @Override
-    protected void onDetachedFromWindow() {
+    private void stopAnimation() {
         if (animator != null) {
             animator.cancel();
             animator = null;
         }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        stopAnimation();
         super.onDetachedFromWindow();
     }
 

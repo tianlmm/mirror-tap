@@ -514,11 +514,13 @@ public class MirrorOverlayService extends Service
             vibrate();
         }
 
+        // 原位那一下必须没有窗口压在 App 上面，否则会被 filterTouchesWhenObscured 丢掉，
+        // 所以这里把触摸层整个摘掉，注入完再挂回去（视觉上会闪一下分隔线，可接受）
         handler.removeCallbacks(restoreTouchable);
         if (panel != null) {
             panel.setIgnoreTouch(true);
         }
-        setPanelTouchable(false);
+        removePanel();
 
         handler.postDelayed(new Runnable() {
             @Override
@@ -534,7 +536,7 @@ public class MirrorOverlayService extends Service
                     restoreTouchable.run();
                 }
             }
-        }, 90L);
+        }, 80L);
         handler.postDelayed(restoreTouchable, duration + 1200L);
     }
 
@@ -578,12 +580,12 @@ public class MirrorOverlayService extends Service
             toast(getString(R.string.tip_need_a11y));
             return;
         }
+        // 同理：滑动要落到下面那个 App 上，上方不能有我们的窗口
         handler.removeCallbacks(restoreTouchable);
         if (panel != null) {
             panel.setIgnoreTouch(true);
         }
-        setPanelTouchable(false);
-        // 等窗口标志真正生效再注入，否则这一下会被自己的触摸层吃掉
+        removePanel();
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {

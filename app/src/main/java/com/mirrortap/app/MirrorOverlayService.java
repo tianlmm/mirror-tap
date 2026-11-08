@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
@@ -85,6 +86,7 @@ public class MirrorOverlayService extends Service
     private boolean panelTouchable = true;
     private boolean handleAttached = false;
     private long lastToastAt = 0L;
+    private long suppressHandleUntil = 0L;
 
     private final Runnable restoreTouchable = new Runnable() {
         @Override
@@ -638,6 +640,7 @@ public class MirrorOverlayService extends Service
             toast(getString(R.string.tip_need_a11y));
             return false;
         }
+        markInjection(duration);
         boolean ok = injector.stroke(points, duration, onFinish);
         if (!ok) {
             toast("镜像注入被系统拒绝");
@@ -666,9 +669,18 @@ public class MirrorOverlayService extends Service
 
     // ---------------------------------------------------------------- 把手
 
+    /** 自己注入手势期间，把手不响应，免得镜像点落到把手上把它拖走。 */
+    private void markInjection(long durationMs) {
+        suppressHandleUntil = SystemClock.uptimeMillis() + durationMs + 150L;
+    }
+
+    private boolean handleSuppressed() {
+        return SystemClock.uptimeMillis() < suppressHandleUntil;
+    }
+
     @Override
     public void onHandleDrag(float screenY) {
-        if (screenHeight <= 0) {
+        if (screenHeight <= 0 || Prefs.lockSplit(this) || handleSuppressed()) {
             return;
         }
         split = Prefs.clamp(screenY / (float) screenHeight);
@@ -683,6 +695,9 @@ public class MirrorOverlayService extends Service
 
     @Override
     public void onHandleTap() {
+        if (handleSuppressed()) {
+            return;
+        }
         setPaused(!paused);
         toast(paused ? "已暂停 · 触摸已还给系统" : "已恢复镜像");
     }

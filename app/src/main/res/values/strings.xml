@@ -27,6 +27,7 @@
     <string name="drag_mirror">镜像到另一半</string>
     <string name="drag_ignore">忽略滑动，只镜像点按</string>
     <string name="section_options">其它选项</string>
+    <string name="opt_lock">锁住分隔线（把手不能拖动，防止跑位）</string>
     <string name="opt_tap_origin">上半屏本身也能点（点哪点哪 + 再镜像一次）</string>
     <string name="opt_haptic">点按时震动反馈</string>
     <string name="opt_tint">上半区显示浅色遮罩提示</string>

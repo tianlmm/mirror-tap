@@ -16,6 +16,7 @@ public final class Prefs {
     public static final String KEY_DRAG_MODE = "drag_mode";
     public static final String KEY_TAP_ORIGIN = "tap_origin";
     public static final String KEY_MAP_MODE = "map_mode";
+    public static final String KEY_LOCK_SPLIT = "lock_split";
 
     /** 对称镜像：10% ↔ 90% */
     public static final String MAP_MIRROR = "mirror";
@@ -85,6 +86,11 @@ public final class Prefs {
     /** 点按时是否也点一下原位置（默认开启：上半屏本身也能点）。 */
     public static boolean tapOrigin(Context c) {
         return sp(c).getBoolean(KEY_TAP_ORIGIN, true);
+    }
+
+    /** 锁住分隔线：把手不能拖动，避免被误触/镜像点击带跑。 */
+    public static boolean lockSplit(Context c) {
+        return sp(c).getBoolean(KEY_LOCK_SPLIT, false);
     }
 
     public static boolean haptic(Context c) {

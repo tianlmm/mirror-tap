@@ -33,18 +33,43 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
-      - name: Set up Gradle
+      # 只是加个缓存，失败也不影响构建（GitHub CDN 偶尔 504 拿不到 gradle 发行包）
+      - name: Set up Gradle (cache)
+        id: setup-gradle
+        continue-on-error: true
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.7'
 
       - name: Build debug + release
         run: |
+          set -e
+          run_build() {
+            echo "== using $1 =="
+            shift
+            "$@" --no-daemon --stacktrace assembleDebug assembleRelease
+          }
+
           if [ -x ./gradlew ]; then
             chmod +x ./gradlew
-            ./gradlew --no-daemon --stacktrace assembleDebug assembleRelease
+            run_build gradlew ./gradlew
+          elif command -v gradle >/dev/null 2>&1; then
+            gradle --version | head -4
+            run_build gradle gradle
           else
-            gradle --no-daemon --stacktrace assembleDebug assembleRelease
+            # 最后一招：自己下发行包，带重试
+            echo "gradle not on PATH, downloading 8.7"
+            ok=0
+            for i in 1 2 3 4 5; do
+              if curl -fsSL --retry 5 --retry-delay 5 -o /tmp/gradle.zip \
+                   https://services.gradle.org/distributions/gradle-8.7-bin.zip; then
+                ok=1; break
+              fi
+              echo "download failed (attempt $i), retrying"; sleep 15
+            done
+            [ "$ok" = "1" ] || { echo "cannot obtain gradle" >&2; exit 1; }
+            unzip -q /tmp/gradle.zip -d /tmp
+            run_build "downloaded gradle" /tmp/gradle-8.7/bin/gradle
           fi
 
       - name: Collect APKs

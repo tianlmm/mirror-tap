@@ -1,2 +1,0 @@
-719e0e1d344bdbc8be79299e6891a10ae163b92399db08eb871b40eb7f37bdcb  dist/MirrorTap-debug-v1.0.16.apk
-16ad40c2ff2c52795ad4bb840c013f8f89619c588bbf9d270fe1edcbfb7c3d5a  dist/MirrorTap-v1.0.16.apk

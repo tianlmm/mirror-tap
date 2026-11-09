@@ -1,1 +1,0 @@
-e7d33ba4620ff988faa9140f63008b0d9d6476524f88a40f4aba0539f8cf3d44  dist/MirrorTap-v1.0.0.apk

@@ -27,3 +27,7 @@ tools/
 # 本地构建产物 / 手工流水线输出
 build_manual/
 dist/
+
+# 临时产物（CI 日志、下载的 artifact）
+ci_art/
+ci_logs/

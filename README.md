@@ -51,7 +51,12 @@
 
 ## 安装
 
-### 方式一：GitHub Actions 直接下载（推荐）
+### 方式一：Releases 直接下载（推荐）
+
+- 最新版：<https://github.com/tianlmm/mirror-tap/releases/latest>
+- v1.0.16 直链：`https://github.com/tianlmm/mirror-tap/releases/download/v1.0.16/MirrorTap-v1.0.16.apk`
+
+### 方式二：Actions 产物
 
 1. 打开仓库的 **Actions** 页 → 最新的 `Build APK` 成功记录；
 2. 页面底部 **Artifacts** 下载 `MirrorTap-apk.zip`，解压得到 `MirrorTap-v1.0.8.apk`（release）和 `MirrorTap-debug-v1.0.8.apk`；
